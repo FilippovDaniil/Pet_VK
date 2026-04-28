@@ -1,0 +1,9 @@
+.gradle/
+build/
+.idea/
+*.iml
+frontend/
+postman/
+uploads/
+*.md
+.git/
