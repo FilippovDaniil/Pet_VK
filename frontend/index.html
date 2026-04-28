@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PetVK — Social Network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-dark: #1a1d23;
+  --bg-dark-2: #23272f;
+  --bg-dark-3: #2d3240;
+  --accent: #5b8dee;
+  --accent-hover: #4a7ce0;
+  --accent-danger: #e05b5b;
+  --accent-success: #5be08a;
+  --text-primary: #f0f2f7;
+  --text-secondary: #8b93a7;
+  --text-dark: #1a1d23;
+  --white: #ffffff;
+  --card-bg: #ffffff;
+  --border: #e8ecf4;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --sidebar-w: 240px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'Inter', sans-serif; background: #f0f2f7; color: var(--text-dark); }
+
+/* Layout */
+#app { display: flex; height: 100vh; overflow: hidden; }
+#sidebar {
+  width: var(--sidebar-w); background: var(--bg-dark); color: var(--text-primary);
+  display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
+}
+#content { flex: 1; overflow-y: auto; padding: 28px; }
+
+/* Sidebar */
+.sidebar-header { padding: 20px 16px 16px; border-bottom: 1px solid var(--bg-dark-3); }
+.app-logo { font-size: 22px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+.user-info { margin-top: 10px; }
+.user-email { font-size: 12px; color: var(--text-secondary); word-break: break-all; }
+.btn-logout {
+  margin-top: 8px; width: 100%; padding: 6px; background: var(--bg-dark-3);
+  color: var(--text-secondary); border: none; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 12px; transition: background .2s, color .2s;
+}
+.btn-logout:hover { background: var(--accent-danger); color: var(--white); }
+
+nav { flex: 1; padding: 12px 0; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 11px 18px;
+  color: var(--text-secondary); cursor: pointer; border-radius: 0;
+  transition: background .15s, color .15s; font-size: 14px; font-weight: 500;
+  border-left: 3px solid transparent;
+}
+.nav-item:hover { background: var(--bg-dark-2); color: var(--text-primary); }
+.nav-item.active { background: var(--bg-dark-2); color: var(--accent); border-left-color: var(--accent); }
+.nav-item .icon { font-size: 18px; width: 22px; text-align: center; flex-shrink: 0; }
+
+/* Cards & content */
+.page { display: none; }
+.page.active { display: block; }
+.page-title { font-size: 22px; font-weight: 700; margin-bottom: 20px; color: var(--text-dark); }
+.card {
+  background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 20px; margin-bottom: 16px; border: 1px solid var(--border);
+}
+
+/* Forms */
+.form-group { margin-bottom: 14px; }
+label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; color: #555; }
+input[type=text], input[type=email], input[type=password], textarea, select {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 14px; font-family: inherit; background: #fafbfc; color: var(--text-dark);
+  transition: border-color .2s, box-shadow .2s; outline: none;
+}
+input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,141,238,.12); }
+textarea { resize: vertical; min-height: 80px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 18px; border: none; border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 14px; font-weight: 500; font-family: inherit; transition: all .2s;
+}
+.btn-primary { background: var(--accent); color: var(--white); }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-danger { background: var(--accent-danger); color: var(--white); }
+.btn-danger:hover { background: #c94a4a; }
+.btn-success { background: var(--accent-success); color: var(--text-dark); }
+.btn-success:hover { background: #4acb78; }
+.btn-ghost {
+  background: transparent; color: var(--accent); border: 1px solid var(--accent);
+}
+.btn-ghost:hover { background: var(--accent); color: var(--white); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Auth pages */
+.auth-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f0f2f7; }
+.auth-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 36px; width: 100%; max-width: 400px; }
+.auth-title { font-size: 26px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+.auth-subtitle { font-size: 14px; color: var(--text-secondary); text-align: center; margin-bottom: 28px; }
+.auth-switch { text-align: center; margin-top: 18px; font-size: 13px; color: var(--text-secondary); }
+.auth-switch span { color: var(--accent); cursor: pointer; font-weight: 500; }
+.auth-switch span:hover { text-decoration: underline; }
+
+/* Post cards */
+.post-card { background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border); padding: 18px; margin-bottom: 14px; }
+.post-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.post-author { font-weight: 600; font-size: 14px; }
+.post-date { font-size: 12px; color: var(--text-secondary); }
+.post-text { font-size: 14px; line-height: 1.6; color: #333; }
+.post-image { margin-top: 10px; max-width: 100%; border-radius: var(--radius-sm); }
+
+/* Friend/User cards */
+.user-card {
+  background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border);
+  padding: 14px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px;
+}
+.avatar {
+  width: 44px; height: 44px; border-radius: 50%; background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--white); font-weight: 700; font-size: 16px; flex-shrink: 0;
+}
+.user-details { flex: 1; }
+.user-name { font-weight: 600; font-size: 14px; }
+.user-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.user-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Messages */
+.msg-container { display: flex; flex-direction: column; height: calc(100vh - 180px); }
+.msg-list { flex: 1; overflow-y: auto; padding: 10px 0; display: flex; flex-direction: column; gap: 8px; }
+.msg-bubble {
+  max-width: 68%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5;
+  word-break: break-word;
+}
+.msg-bubble.mine { background: var(--accent); color: var(--white); align-self: flex-end; border-bottom-right-radius: 4px; }
+.msg-bubble.theirs { background: #f0f2f7; color: var(--text-dark); align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg-time { font-size: 10px; opacity: .65; margin-top: 3px; text-align: right; }
+.msg-input-row { display: flex; gap: 8px; margin-top: 10px; }
+.msg-input-row input { flex: 1; }
+
+/* Toast */
+#toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--bg-dark); color: var(--text-primary); padding: 12px 18px;
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); font-size: 14px;
+  min-width: 220px; max-width: 360px; animation: slideIn .25s ease;
+  border-left: 4px solid var(--accent);
+}
+.toast.success { border-left-color: var(--accent-success); }
+.toast.error { border-left-color: var(--accent-danger); }
+@keyframes slideIn { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:translateX(0); } }
+
+/* Spinner */
+.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(91,141,238,.2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-center { display: flex; justify-content: center; padding: 28px; }
+
+/* Section headers */
+.section-title { font-size: 16px; font-weight: 600; margin: 18px 0 10px; color: #333; }
+.divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+/* Grid */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* Inline row */
+.input-row { display: flex; gap: 8px; }
+.input-row input { flex: 1; }
+
+/* Admin table */
+.users-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.users-table th, .users-table td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+.users-table th { font-weight: 600; color: #555; background: #f8f9fc; }
+.users-table tr:hover td { background: #f5f7fc; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-admin { background: #fde8b0; color: #b07d00; }
+.badge-banned { background: #fde0e0; color: #c94a4a; }
+.badge-active { background: #d8f5e8; color: #1b8a4a; }
+
+/* Empty state */
+.empty { text-align: center; padding: 32px; color: var(--text-secondary); font-size: 14px; }
+
+/* Responsive sidebar */
+@media (max-width: 768px) {
+  :root { --sidebar-w: 56px; }
+  .nav-item span { display: none; }
+  .sidebar-header .user-email, .sidebar-header .btn-logout, .sidebar-header .user-info { display: none; }
+  .app-logo { font-size: 18px; }
+  #content { padding: 16px; }
+}
+</style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div id="app" style="display:none">
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <div class="app-logo">PetVK</div>
+      <div class="user-info" id="sidebar-user" style="display:none">
+        <div class="user-email" id="sidebar-email"></div>
+        <button class="btn-logout" onclick="logout()">Logout</button>
+      </div>
+    </div>
+    <nav id="nav-menu">
+      <div class="nav-item" data-page="wall" onclick="navigate('wall')"><span class="icon">🏠</span><span>My Wall</span></div>
+      <div class="nav-item" data-page="friends" onclick="navigate('friends')"><span class="icon">👥</span><span>Friends</span></div>
+      <div class="nav-item" data-page="messages" onclick="navigate('messages')"><span class="icon">💬</span><span>Messages</span></div>
+      <div class="nav-item" data-page="groups" onclick="navigate('groups')"><span class="icon">🔖</span><span>Groups</span></div>
+      <div class="nav-item" data-page="search" onclick="navigate('search')"><span class="icon">🔍</span><span>Search Users</span></div>
+      <div class="nav-item admin-only" data-page="admin" onclick="navigate('admin')" style="display:none"><span class="icon">⚙️</span><span>Admin Panel</span></div>
+    </nav>
+  </aside>
+  <main id="content">
+    <!-- WALL -->
+    <section id="page-wall" class="page">
+      <div class="page-title">My Wall</div>
+      <div class="card">
+        <div class="section-title">New Post</div>
+        <div class="form-group"><textarea id="post-text" placeholder="What's on your mind?"></textarea></div>
+        <div class="form-group"><input type="text" id="post-image" placeholder="Image URL (optional)"></div>
+        <button class="btn btn-primary" onclick="createPost()">Post</button>
+      </div>
+      <div id="wall-posts"></div>
+      <div style="text-align:center;margin-top:10px"><button id="wall-more-btn" class="btn btn-ghost" onclick="loadMorePosts()" style="display:none">Load more</button></div>
+    </section>
+
+    <!-- FRIENDS -->
+    <section id="page-friends" class="page">
+      <div class="page-title">Friends</div>
+      <div class="card">
+        <div class="section-title">Send Friend Request</div>
+        <div class="input-row">
+          <input type="text" id="friend-req-id" placeholder="User ID">
+          <button class="btn btn-primary" onclick="sendFriendRequest()">Send</button>
+        </div>
+      </div>
+      <div class="section-title">Incoming Requests</div>
+      <div id="friend-requests"></div>
+      <div class="section-title">My Friends</div>
+      <div id="friends-list"></div>
+    </section>
+
+    <!-- MESSAGES -->
+    <section id="page-messages" class="page">
+      <div class="page-title">Messages</div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="input-row">
+          <input type="text" id="msg-user-id" placeholder="Enter User ID to open dialog">
+          <button class="btn btn-primary" onclick="openDialog()">Open</button>
+        </div>
+      </div>
+      <div id="msg-dialog" style="display:none" class="card">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Dialog with user <strong id="msg-dialog-title"></strong></div>
+        <div class="msg-list" id="msg-list"></div>
+        <div class="msg-input-row">
+          <input type="text" id="msg-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMessage()">
+          <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- GROUPS -->
+    <section id="page-groups" class="page">
+      <div class="page-title">Groups</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="section-title">Create Group</div>
+          <div class="form-group"><input type="text" id="grp-name" placeholder="Group name"></div>
+          <div class="form-group"><textarea id="grp-desc" placeholder="Description" style="min-height:60px"></textarea></div>
+          <button class="btn btn-primary" onclick="createGroup()">Create</button>
+        </div>
+        <div class="card">
+          <div class="section-title">Find Group by ID</div>
+          <div class="input-row" style="margin-bottom:12px">
+            <input type="text" id="grp-search-id" placeholder="Group ID">
+            <button class="btn btn-ghost" onclick="loadGroupById()">Load</button>
+          </div>
+          <div id="grp-found"></div>
+        </div>
+      </div>
+      <div class="section-title">My Groups</div>
+      <div id="my-groups"></div>
+    </section>
+
+    <!-- SEARCH -->
+    <section id="page-search" class="page">
+      <div class="page-title">Search Users</div>
+      <div class="card">
+        <div class="input-row">
+          <input type="text" id="search-query" placeholder="Name or email…" onkeydown="if(event.key==='Enter')searchUsers()">
+          <button class="btn btn-primary" onclick="searchUsers()">Search</button>
+        </div>
+      </div>
+      <div id="search-results"></div>
+    </section>
+
+    <!-- ADMIN -->
+    <section id="page-admin" class="page">
+      <div class="page-title">Admin Panel</div>
+      <div class="card">
+        <div class="section-title">Ban / Unban User</div>
+        <div class="input-row">
+          <input type="text" id="admin-uid" placeholder="User ID">
+          <button class="btn btn-danger" onclick="banUser()">Ban</button>
+          <button class="btn btn-success" onclick="unbanUser()">Unban</button>
+        </div>
+      </div>
+      <div class="section-title">All Users</div>
+      <div id="admin-users"></div>
+    </section>
+  </main>
+</div>
+
+<!-- AUTH SCREENS (outside #app) -->
+<div id="auth-screen" class="auth-wrapper">
+  <div id="login-card" class="auth-card">
+    <div class="auth-title">Welcome back</div>
+    <div class="auth-subtitle">Sign in to your account</div>
+    <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@example.com"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="Password" onkeydown="if(event.key==='Enter')login()"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="login()">Sign In</button>
+    <div class="auth-switch">No account? <span onclick="showRegister()">Register here</span></div>
+  </div>
+  <div id="register-card" class="auth-card" style="display:none">
+    <div class="auth-title">Create account</div>
+    <div class="auth-subtitle">Join the network</div>
+    <div class="grid-2">
+      <div class="form-group"><label>First Name</label><input type="text" id="reg-first" placeholder="John"></div>
+      <div class="form-group"><label>Last Name</label><input type="text" id="reg-last" placeholder="Doe"></div>
+    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="reg-email" placeholder="you@example.com"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="reg-pass" placeholder="Password" onkeydown="if(event.key==='Enter')register()"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="register()">Register</button>
+    <div class="auth-switch">Already have an account? <span onclick="showLogin()">Sign in</span></div>
+  </div>
+</div>
+
+<script>
+const BASE = 'http://localhost:8080';
+let currentUser = null;
+let wallPage = 0;
+let wallHasMore = true;
+let msgInterval = null;
+let currentDialogUserId = null;
+
+/* ── Utilities ─────────────────────────────────────────────────────── */
+function parseJwt(token) {
+  const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+  return JSON.parse(atob(base64));
+}
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+function spinner() {
+  const d = document.createElement('div');
+  d.className = 'loading-center';
+  d.innerHTML = '<div class="spinner"></div>';
+  return d;
+}
+function initials(name = '') {
+  return name.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || '?';
+}
+function formatDate(str) {
+  if (!str) return '';
+  return new Date(str).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+/* ── HTTP layer ─────────────────────────────────────────────────────── */
+async function api(method, path, body, retry = true) {
+  const token = localStorage.getItem('accessToken');
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  let res = await fetch(BASE + path, opts);
+  if (res.status === 401 && retry) {
+    const refreshed = await tryRefresh();
+    if (refreshed) return api(method, path, body, false);
+    doLogout(); return null;
+  }
+  return res;
+}
+async function tryRefresh() {
+  const rt = localStorage.getItem('refreshToken');
+  if (!rt) return false;
+  try {
+    const res = await fetch(`${BASE}/api/auth/refresh`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: rt })
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (data.accessToken) {
+      localStorage.setItem('accessToken', data.accessToken);
+      if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+async function apiJson(method, path, body) {
+  const res = await api(method, path, body);
+  if (!res) return null;
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try { const d = await res.json(); msg = d.message || d.error || msg; } catch (_) {}
+    toast(msg, 'error');
+    return null;
+  }
+  try { return await res.json(); } catch (_) { return {}; }
+}
+
+/* ── Auth ───────────────────────────────────────────────────────────── */
+function showLogin() {
+  document.getElementById('login-card').style.display = '';
+  document.getElementById('register-card').style.display = 'none';
+}
+function showRegister() {
+  document.getElementById('login-card').style.display = 'none';
+  document.getElementById('register-card').style.display = '';
+}
+async function login() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) { toast('Fill in all fields', 'error'); return; }
+  const data = await apiJson('POST', '/api/auth/login', { email, password });
+  if (data) saveAuth(data);
+}
+async function register() {
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-pass').value;
+  const firstName = document.getElementById('reg-first').value.trim();
+  const lastName = document.getElementById('reg-last').value.trim();
+  if (!email || !password || !firstName || !lastName) { toast('Fill in all fields', 'error'); return; }
+  const data = await apiJson('POST', '/api/auth/register', { email, password, firstName, lastName });
+  if (data) { toast('Account created! Please sign in.', 'success'); showLogin(); }
+}
+function saveAuth(data) {
+  localStorage.setItem('accessToken', data.accessToken || data.access_token || '');
+  localStorage.setItem('refreshToken', data.refreshToken || data.refresh_token || '');
+  bootApp();
+}
+async function logout() {
+  await api('POST', '/api/auth/logout', null, false);
+  doLogout();
+}
+function doLogout() {
+  stopMsgPolling();
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  currentUser = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  showLogin();
+}
+function bootApp() {
+  const token = localStorage.getItem('accessToken');
+  if (!token) { document.getElementById('auth-screen').style.display = 'flex'; document.getElementById('app').style.display = 'none'; return; }
+  try {
+    const payload = parseJwt(token);
+    currentUser = { userId: payload.userId || payload.sub, role: payload.role, email: payload.email || payload.sub };
+  } catch (_) { doLogout(); return; }
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('sidebar-user').style.display = '';
+  document.getElementById('sidebar-email').textContent = currentUser.email;
+  const adminNav = document.querySelector('.admin-only');
+  adminNav.style.display = currentUser.role === 'ROLE_ADMIN' ? '' : 'none';
+  navigate('wall');
+}
+
+/* ── Navigation ─────────────────────────────────────────────────────── */
+function navigate(page) {
+  stopMsgPolling();
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById(`page-${page}`);
+  if (pg) pg.classList.add('active');
+  const nav = document.querySelector(`[data-page="${page}"]`);
+  if (nav) nav.classList.add('active');
+  if (page === 'wall') { wallPage = 0; wallHasMore = true; loadWall(true); }
+  if (page === 'friends') loadFriends();
+  if (page === 'groups') loadMyGroups();
+  if (page === 'admin') loadAdminUsers();
+}
+
+/* ── Wall ───────────────────────────────────────────────────────────── */
+let wallPosts = [];
+async function loadWall(reset = false) {
+  if (reset) { wallPage = 0; wallHasMore = true; wallPosts = []; document.getElementById('wall-posts').innerHTML = ''; }
+  if (!wallHasMore) return;
+  const cont = document.getElementById('wall-posts');
+  const sp = spinner(); cont.appendChild(sp);
+  const data = await apiJson('GET', `/api/posts/wall/${currentUser.userId}?page=${wallPage}&size=10`);
+  sp.remove();
+  if (!data) return;
+  const posts = Array.isArray(data) ? data : (data.content || data.posts || []);
+  wallHasMore = Array.isArray(data) ? posts.length === 10 : (data.totalPages ? wallPage + 1 < data.totalPages : posts.length === 10);
+  posts.forEach(p => { wallPosts.push(p); cont.appendChild(renderPost(p)); });
+  document.getElementById('wall-more-btn').style.display = wallHasMore ? '' : 'none';
+  wallPage++;
+}
+function loadMorePosts() { loadWall(false); }
+function renderPost(p) {
+  const div = document.createElement('div');
+  div.className = 'post-card';
+  const own = p.authorId === currentUser.userId || p.userId === currentUser.userId;
+  div.innerHTML = `
+    <div class="post-header">
+      <div>
+        <div class="post-author">${p.authorName || p.firstName || 'User #' + (p.authorId || '')}</div>
+        <div class="post-date">${formatDate(p.createdAt || p.created)}</div>
+      </div>
+      ${own ? `<button class="btn btn-sm btn-danger" onclick="deletePost(${p.id || p.postId}, this)">Delete</button>` : ''}
+    </div>
+    <div class="post-text">${escHtml(p.text || p.content || '')}</div>
+    ${p.imageUrl ? `<img class="post-image" src="${p.imageUrl}" alt="Post image" style="max-height:320px">` : ''}
+  `;
+  return div;
+}
+async function createPost() {
+  const text = document.getElementById('post-text').value.trim();
+  const imageUrl = document.getElementById('post-image').value.trim();
+  if (!text) { toast('Post text is required', 'error'); return; }
+  const data = await apiJson('POST', '/api/posts/wall', { text, imageUrl: imageUrl || null });
+  if (data) {
+    toast('Post created!', 'success');
+    document.getElementById('post-text').value = '';
+    document.getElementById('post-image').value = '';
+    loadWall(true);
+  }
+}
+async function deletePost(id, btn) {
+  btn.disabled = true;
+  const res = await api('DELETE', `/api/posts/${id}`);
+  if (res && res.ok) { toast('Post deleted', 'success'); loadWall(true); }
+  else { btn.disabled = false; }
+}
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+
+/* ── Friends ────────────────────────────────────────────────────────── */
+async function loadFriends() {
+  const rl = document.getElementById('friend-requests');
+  const fl = document.getElementById('friends-list');
+  rl.innerHTML = ''; fl.innerHTML = '';
+  rl.appendChild(spinner()); fl.appendChild(spinner());
+  const [friends, requests] = await Promise.all([
+    apiJson('GET', '/api/friends'),
+    apiJson('GET', '/api/friends/requests/incoming')
+  ]);
+  rl.innerHTML = ''; fl.innerHTML = '';
+  const reqs = Array.isArray(requests) ? requests : (requests?.content || []);
+  if (!reqs.length) rl.innerHTML = '<div class="empty">No incoming requests</div>';
+  else reqs.forEach(r => rl.appendChild(renderUserCard(r, 'request')));
+  const flist = Array.isArray(friends) ? friends : (friends?.content || []);
+  if (!flist.length) fl.innerHTML = '<div class="empty">No friends yet</div>';
+  else flist.forEach(f => fl.appendChild(renderUserCard(f, 'friend')));
+}
+async function sendFriendRequest() {
+  const uid = document.getElementById('friend-req-id').value.trim();
+  if (!uid) { toast('Enter a user ID', 'error'); return; }
+  const res = await api('POST', `/api/friends/requests/${uid}`);
+  if (res && res.ok) { toast('Request sent!', 'success'); document.getElementById('friend-req-id').value = ''; }
+}
+async function acceptFriend(uid) {
+  const res = await api('PUT', `/api/friends/requests/${uid}/accept`);
+  if (res && res.ok) { toast('Friend added!', 'success'); loadFriends(); }
+}
+async function rejectFriend(uid) {
+  const res = await api('PUT', `/api/friends/requests/${uid}/reject`);
+  if (res && res.ok) { toast('Request rejected', 'info'); loadFriends(); }
+}
+async function removeFriend(uid) {
+  const res = await api('DELETE', `/api/friends/${uid}`);
+  if (res && res.ok) { toast('Friend removed', 'info'); loadFriends(); }
+}
+function renderUserCard(u, mode) {
+  const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username || u.email || `User #${u.id || u.userId}`;
+  const uid = u.id || u.userId || u.senderId;
+  const div = document.createElement('div');
+  div.className = 'user-card';
+  let actions = '';
+  if (mode === 'request') actions = `<button class="btn btn-sm btn-success" onclick="acceptFriend(${uid})">Accept</button><button class="btn btn-sm btn-danger" onclick="rejectFriend(${uid})">Reject</button>`;
+  if (mode === 'friend') actions = `<button class="btn btn-sm btn-ghost" onclick="removeFriend(${uid})">Remove</button>`;
+  if (mode === 'search') actions = `<button class="btn btn-sm btn-primary" onclick="sendFriendReqQuick(${uid}, this)">Add Friend</button>`;
+  div.innerHTML = `
+    <div class="avatar">${initials(name)}</div>
+    <div class="user-details">
+      <div class="user-name">${escHtml(name)}</div>
+      <div class="user-meta">${escHtml(u.email || '')} ${u.id || u.userId ? '· ID: ' + (u.id || u.userId) : ''}</div>
+    </div>
+    <div class="user-actions">${actions}</div>
+  `;
+  return div;
+}
+async function sendFriendReqQuick(uid, btn) {
+  btn.disabled = true;
+  const res = await api('POST', `/api/friends/requests/${uid}`);
+  if (res && res.ok) { btn.textContent = 'Sent'; toast('Request sent!', 'success'); }
+  else btn.disabled = false;
+}
+
+/* ── Messages ───────────────────────────────────────────────────────── */
+function openDialog() {
+  const uid = document.getElementById('msg-user-id').value.trim();
+  if (!uid) { toast('Enter a user ID', 'error'); return; }
+  stopMsgPolling();
+  currentDialogUserId = uid;
+  document.getElementById('msg-dialog-title').textContent = uid;
+  document.getElementById('msg-dialog').style.display = '';
+  loadMessages();
+  msgInterval = setInterval(loadMessages, 5000);
+}
+async function loadMessages() {
+  if (!currentDialogUserId) return;
+  const data = await apiJson('GET', `/api/messages/${currentDialogUserId}`);
+  if (!data) return;
+  const msgs = Array.isArray(data) ? data : (data.content || data.messages || []);
+  const list = document.getElementById('msg-list');
+  const atBottom = list.scrollHeight - list.scrollTop <= list.clientHeight + 40;
+  list.innerHTML = '';
+  if (!msgs.length) { list.innerHTML = '<div class="empty">No messages yet</div>'; return; }
+  msgs.forEach(m => {
+    const mine = m.senderId === currentUser.userId || m.senderId == currentUser.userId;
+    const bubble = document.createElement('div');
+    bubble.className = `msg-bubble ${mine ? 'mine' : 'theirs'}`;
+    bubble.innerHTML = `${escHtml(m.content || m.text || '')} <div class="msg-time">${formatDate(m.sentAt || m.createdAt || m.created)}</div>`;
+    list.appendChild(bubble);
+  });
+  if (atBottom) list.scrollTop = list.scrollHeight;
+}
+async function sendMessage() {
+  const text = document.getElementById('msg-input').value.trim();
+  if (!text || !currentDialogUserId) return;
+  const res = await api('POST', `/api/messages/${currentDialogUserId}`, { content: text });
+  if (res && res.ok) {
+    document.getElementById('msg-input').value = '';
+    await loadMessages();
+    const list = document.getElementById('msg-list');
+    list.scrollTop = list.scrollHeight;
+  }
+}
+function stopMsgPolling() {
+  if (msgInterval) { clearInterval(msgInterval); msgInterval = null; }
+  currentDialogUserId = null;
+}
+
+/* ── Groups ─────────────────────────────────────────────────────────── */
+async function createGroup() {
+  const name = document.getElementById('grp-name').value.trim();
+  const description = document.getElementById('grp-desc').value.trim();
+  if (!name) { toast('Group name is required', 'error'); return; }
+  const data = await apiJson('POST', '/api/groups', { name, description });
+  if (data) {
+    toast('Group created!', 'success');
+    document.getElementById('grp-name').value = '';
+    document.getElementById('grp-desc').value = '';
+    loadMyGroups();
+  }
+}
+async function loadGroupById() {
+  const id = document.getElementById('grp-search-id').value.trim();
+  if (!id) { toast('Enter a group ID', 'error'); return; }
+  const cont = document.getElementById('grp-found');
+  cont.innerHTML = ''; cont.appendChild(spinner());
+  const data = await apiJson('GET', `/api/groups/${id}`);
+  cont.innerHTML = '';
+  if (!data) return;
+  cont.appendChild(renderGroupCard(data));
+}
+async function loadMyGroups() {
+  const cont = document.getElementById('my-groups');
+  cont.innerHTML = ''; cont.appendChild(spinner());
+  const data = await apiJson('GET', '/api/groups/my');
+  cont.innerHTML = '';
+  if (!data) return;
+  const groups = Array.isArray(data) ? data : (data.content || []);
+  if (!groups.length) { cont.innerHTML = '<div class="empty">You haven\'t joined any groups</div>'; return; }
+  groups.forEach(g => cont.appendChild(renderGroupCard(g)));
+}
+function renderGroupCard(g) {
+  const div = document.createElement('div');
+  div.className = 'card';
+  const gid = g.id || g.groupId;
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div>
+        <div style="font-weight:600;font-size:15px">${escHtml(g.name || 'Group #' + gid)}</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">${escHtml(g.description || '')}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:6px">Members: ${g.memberCount ?? '?'} · ID: ${gid}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-sm btn-primary" onclick="joinGroup(${gid}, this)">Join</button>
+        <button class="btn btn-sm btn-ghost" onclick="leaveGroup(${gid}, this)">Leave</button>
+      </div>
+    </div>
+  `;
+  return div;
+}
+async function joinGroup(id, btn) {
+  btn.disabled = true;
+  const res = await api('POST', `/api/groups/${id}/members`);
+  if (res && res.ok) { toast('Joined group!', 'success'); loadMyGroups(); }
+  else btn.disabled = false;
+}
+async function leaveGroup(id, btn) {
+  btn.disabled = true;
+  const res = await api('DELETE', `/api/groups/${id}/members`);
+  if (res && res.ok) { toast('Left group', 'info'); loadMyGroups(); }
+  else btn.disabled = false;
+}
+
+/* ── Search ─────────────────────────────────────────────────────────── */
+async function searchUsers() {
+  const q = document.getElementById('search-query').value.trim();
+  if (!q) { toast('Enter a search query', 'error'); return; }
+  const cont = document.getElementById('search-results');
+  cont.innerHTML = ''; cont.appendChild(spinner());
+  const data = await apiJson('GET', `/api/users/search?query=${encodeURIComponent(q)}`);
+  cont.innerHTML = '';
+  if (!data) return;
+  const users = Array.isArray(data) ? data : (data.content || []);
+  if (!users.length) { cont.innerHTML = '<div class="empty">No users found</div>'; return; }
+  users.forEach(u => cont.appendChild(renderUserCard(u, 'search')));
+}
+
+/* ── Admin ──────────────────────────────────────────────────────────── */
+async function banUser() {
+  const uid = document.getElementById('admin-uid').value.trim();
+  if (!uid) { toast('Enter a user ID', 'error'); return; }
+  const res = await api('POST', `/api/admin/users/${uid}/ban`);
+  if (res && res.ok) { toast(`User ${uid} banned`, 'success'); loadAdminUsers(); }
+}
+async function unbanUser() {
+  const uid = document.getElementById('admin-uid').value.trim();
+  if (!uid) { toast('Enter a user ID', 'error'); return; }
+  const res = await api('POST', `/api/admin/users/${uid}/unban`);
+  if (res && res.ok) { toast(`User ${uid} unbanned`, 'success'); loadAdminUsers(); }
+}
+async function loadAdminUsers() {
+  const cont = document.getElementById('admin-users');
+  cont.innerHTML = ''; cont.appendChild(spinner());
+  const data = await apiJson('GET', '/api/admin/users');
+  cont.innerHTML = '';
+  if (!data) return;
+  const users = Array.isArray(data) ? data : (data.content || []);
+  if (!users.length) { cont.innerHTML = '<div class="empty">No users</div>'; return; }
+  const wrap = document.createElement('div');
+  wrap.className = 'card'; wrap.style.padding = '0';
+  const tbl = document.createElement('table');
+  tbl.className = 'users-table';
+  tbl.innerHTML = `<thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>`;
+  const tbody = document.createElement('tbody');
+  users.forEach(u => {
+    const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username || '—';
+    const uid = u.id || u.userId;
+    const banned = u.banned || u.status === 'BANNED';
+    const role = u.role || u.roles?.[0] || 'USER';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${uid}</td><td>${escHtml(name)}</td><td>${escHtml(u.email || '')}</td>
+      <td><span class="badge ${role.includes('ADMIN') ? 'badge-admin' : ''}">${role}</span></td>
+      <td><span class="badge ${banned ? 'badge-banned' : 'badge-active'}">${banned ? 'Banned' : 'Active'}</span></td>
+      <td>
+        ${!banned ? `<button class="btn btn-sm btn-danger" onclick="adminBanById(${uid})">Ban</button>` : `<button class="btn btn-sm btn-success" onclick="adminUnbanById(${uid})">Unban</button>`}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+  wrap.appendChild(tbl);
+  cont.appendChild(wrap);
+}
+async function adminBanById(uid) {
+  const res = await api('POST', `/api/admin/users/${uid}/ban`);
+  if (res && res.ok) { toast(`User ${uid} banned`, 'success'); loadAdminUsers(); }
+}
+async function adminUnbanById(uid) {
+  const res = await api('POST', `/api/admin/users/${uid}/unban`);
+  if (res && res.ok) { toast(`User ${uid} unbanned`, 'success'); loadAdminUsers(); }
+}
+
+/* ── Boot ───────────────────────────────────────────────────────────── */
+bootApp();
+</script>
+</body>
+</html>
