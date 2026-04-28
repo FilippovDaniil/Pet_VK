@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="001-create-users" author="socialnetwork">
+        <createTable tableName="users">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="password" type="VARCHAR(255)"/>
+            <column name="first_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="avatar_url" type="TEXT"/>
+            <column name="bio" type="TEXT"/>
+            <column name="role" type="VARCHAR(20)" defaultValue="ROLE_USER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_banned" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP"/>
+        </createTable>
+
+        <createIndex tableName="users" indexName="idx_users_email">
+            <column name="email"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001-create-groups" author="socialnetwork">
+        <createTable tableName="groups">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="avatar_url" type="TEXT"/>
+            <column name="owner_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_groups_owner" references="users(id)"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+        </createTable>
+
+        <createIndex tableName="groups" indexName="idx_groups_owner">
+            <column name="owner_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001-create-group-members" author="socialnetwork">
+        <createTable tableName="group_members">
+            <column name="group_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_gm_group" references="groups(id)" deleteCascade="true"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_gm_user" references="users(id)"/>
+            </column>
+            <column name="role" type="VARCHAR(20)" defaultValue="MEMBER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="joined_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+        </createTable>
+
+        <addPrimaryKey tableName="group_members" columnNames="group_id,user_id" constraintName="pk_group_members"/>
+
+        <createIndex tableName="group_members" indexName="idx_gm_group">
+            <column name="group_id"/>
+        </createIndex>
+        <createIndex tableName="group_members" indexName="idx_gm_user">
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001-create-friend-requests" author="socialnetwork">
+        <createTable tableName="friend_requests">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="requester_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_fr_requester" references="users(id)"/>
+            </column>
+            <column name="addressee_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_fr_addressee" references="users(id)"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP"/>
+        </createTable>
+
+        <addUniqueConstraint tableName="friend_requests" columnNames="requester_id,addressee_id"
+                             constraintName="uq_friend_requests"/>
+
+        <createIndex tableName="friend_requests" indexName="idx_fr_requester">
+            <column name="requester_id"/>
+        </createIndex>
+        <createIndex tableName="friend_requests" indexName="idx_fr_addressee">
+            <column name="addressee_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001-create-messages" author="socialnetwork">
+        <createTable tableName="messages">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sender_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_msg_sender" references="users(id)"/>
+            </column>
+            <column name="recipient_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_msg_recipient" references="users(id)"/>
+            </column>
+            <column name="text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_read" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+        </createTable>
+
+        <createIndex tableName="messages" indexName="idx_msg_sender">
+            <column name="sender_id"/>
+        </createIndex>
+        <createIndex tableName="messages" indexName="idx_msg_recipient">
+            <column name="recipient_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001-create-posts" author="socialnetwork">
+        <createTable tableName="posts">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="author_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_post_author" references="users(id)"/>
+            </column>
+            <column name="group_id" type="BIGINT">
+                <constraints foreignKeyName="fk_post_group" references="groups(id)"/>
+            </column>
+            <column name="text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="image_url" type="TEXT"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP"/>
+        </createTable>
+
+        <createIndex tableName="posts" indexName="idx_post_author">
+            <column name="author_id"/>
+        </createIndex>
+        <createIndex tableName="posts" indexName="idx_post_group">
+            <column name="group_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001-create-comments" author="socialnetwork">
+        <createTable tableName="comments">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="author_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_comment_author" references="users(id)"/>
+            </column>
+            <column name="post_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_comment_post" references="posts(id)" deleteCascade="true"/>
+            </column>
+            <column name="text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP"/>
+        </createTable>
+
+        <createIndex tableName="comments" indexName="idx_comment_author">
+            <column name="author_id"/>
+        </createIndex>
+        <createIndex tableName="comments" indexName="idx_comment_post">
+            <column name="post_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
