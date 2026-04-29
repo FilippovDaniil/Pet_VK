@@ -26,11 +26,28 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Юнит-тесты для {@link FriendService}.
+ *
+ * <p>Проверяет всю бизнес-логику работы с заявками в друзья, включая публикацию Kafka-событий.
+ * {@link FriendEventPublisher} также замокирован — тесты проверяют, что событие публикуется
+ * с нужными полями (тип, sourceUserId, targetUserId) через ArgumentCaptor.
+ *
+ * <p>Покрываемые сценарии:
+ * <ul>
+ *   <li>sendRequest: успех, запрос самому себе, дубликат заявки</li>
+ *   <li>getIncomingRequests: возвращаются только PENDING-заявки</li>
+ *   <li>respondToRequest: принять, отклонить, попытка ответить чужой заявкой, повторная обработка</li>
+ *   <li>removeFriend: успех, не друзья (PENDING-статус), нет связи вообще</li>
+ *   <li>getFriends: правильная выборка из двунаправленных заявок</li>
+ * </ul>
+ */
 @ExtendWith(MockitoExtension.class)
 class FriendServiceTest {
 
     @Mock FriendRequestRepository friendRequestRepository;
     @Mock UserService userService;
+    /** Mock Kafka-паблишера — проверяем, что событие публикуется с верными данными. */
     @Mock FriendEventPublisher eventPublisher;
 
     @InjectMocks FriendService friendService;

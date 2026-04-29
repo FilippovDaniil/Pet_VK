@@ -19,6 +19,19 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Юнит-тесты для {@link PostService}.
+ *
+ * <p>Проверяет бизнес-логику создания, обновления и удаления постов.
+ * Репозиторий и UserService заменены mock-объектами.
+ *
+ * <p>Ключевые сценарии:
+ * <ul>
+ *   <li>Создание поста на стене пользователя → ответ содержит id и текст</li>
+ *   <li>Попытка удалить чужой пост → ForbiddenException</li>
+ *   <li>Удаление своего поста → вызов delete на репозитории</li>
+ * </ul>
+ */
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
 

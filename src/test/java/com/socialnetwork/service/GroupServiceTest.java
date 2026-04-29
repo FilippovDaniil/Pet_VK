@@ -22,6 +22,22 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Юнит-тесты для {@link GroupService}.
+ *
+ * <p>Проверяет управление группами: создание, вступление, выход, управление ролями, удаление.
+ * Репозитории и UserService замокированы — бизнес-логика тестируется в изоляции.
+ * Для проверки сохранённых объектов используется ArgumentCaptor.
+ *
+ * <p>Покрываемые сценарии:
+ * <ul>
+ *   <li>createGroup: создаётся группа и сразу GroupMember с ролью ADMIN</li>
+ *   <li>joinGroup: успех; повторное вступление → BadRequestException</li>
+ *   <li>leaveGroup: успех для обычного участника; владелец не может уйти; не-участник → ошибка</li>
+ *   <li>addGroupAdmin: только ADMIN группы может повышать; успешное повышение</li>
+ *   <li>deleteGroup: владелец может удалить; суперадмин (ROLE_ADMIN) может удалить; чужой — нет</li>
+ * </ul>
+ */
 @ExtendWith(MockitoExtension.class)
 class GroupServiceTest {
 

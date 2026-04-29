@@ -5,11 +5,27 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
 
+/**
+ * Юнит-тесты для {@link JwtTokenProvider}.
+ *
+ * <p>Тестируется напрямую (без Spring-контекста) — конструктор {@code JwtTokenProvider(secret, expirationMs)}
+ * принимает параметры явно, что делает класс легко тестируемым без @Value.
+ *
+ * <p>Покрываемые сценарии:
+ * <ul>
+ *   <li>Генерация и валидация корректного токена</li>
+ *   <li>Истёкший токен → validateToken возвращает false</li>
+ *   <li>Изменённая подпись (tampering) → validateToken возвращает false</li>
+ *   <li>Полностью невалидная строка или пустая строка → false</li>
+ *   <li>Извлечение email, userId, role из токена</li>
+ *   <li>Оставшееся время жизни (TTL) корректно вычисляется</li>
+ * </ul>
+ */
 class JwtTokenProviderTest {
 
-    // Secret must be at least 32 characters for HS256
+    // HS256 требует секрет не менее 32 байт — короткие ключи вызовут WeakKeyException
     private static final String SECRET = "testSecretKeyForTestingPurposesOnly12345";
-    private static final long EXPIRATION_MS = 900_000L; // 15 minutes
+    private static final long EXPIRATION_MS = 900_000L; // 15 минут
 
     private JwtTokenProvider tokenProvider;
 

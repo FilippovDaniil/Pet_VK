@@ -29,6 +29,24 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Интеграционные тесты HTTP-слоя для {@link CommentController}.
+ *
+ * <p>Проверяет маппинг эндпоинтов, Bean Validation на входных DTO
+ * и корректность HTTP-статусов для авторизованных и неавторизованных запросов.
+ *
+ * <p>Тест {@code deleteComment_delegatesCorrectUserIdFromPrincipal} проверяет
+ * ключевой инвариант безопасности: userId берётся из Principal (токена),
+ * а не из параметра запроса. Это предотвращает удаление чужих комментариев
+ * через подмену userId в запросе.
+ *
+ * <p>Покрываемые сценарии:
+ * <ul>
+ *   <li>addComment: 201; не авторизован → 401; null postId → 400; пустой текст → 400</li>
+ *   <li>getComments: 200 со списком; дефолтный size=20; пустой результат → 200</li>
+ *   <li>deleteComment: 204; не авторизован → 401; userId из Principal</li>
+ * </ul>
+ */
 @WebMvcTest(CommentController.class)
 @ActiveProfiles("test")
 class CommentControllerTest {
@@ -39,7 +57,7 @@ class CommentControllerTest {
     @MockBean CommentService commentService;
     @MockBean UserService userService;
 
-    // Security context dependencies required by SecurityConfig
+    // SecurityConfig требует этих бинов в контексте — без mock'ов контекст не запустится
     @MockBean com.socialnetwork.security.JwtAuthenticationFilter jwtAuthenticationFilter;
     @MockBean com.socialnetwork.security.OAuth2SuccessHandler oAuth2SuccessHandler;
     @MockBean com.socialnetwork.security.CustomUserDetailsService customUserDetailsService;

@@ -29,6 +29,26 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Интеграционные тесты HTTP-слоя для {@link PostController}.
+ *
+ * <p>Поднимает только MVC-контекст через {@code @WebMvcTest}.
+ * {@code @WithMockUser} — аннотация Spring Security Test, которая создаёт
+ * сессию с фиктивным аутентифицированным пользователем для тестирования
+ * защищённых эндпоинтов без реального JWT.
+ *
+ * <p>{@code csrf()} — добавляет CSRF-токен в запрос. При тестировании с
+ * включённой CSRF-защитой (поведение по умолчанию в @WebMvcTest) без него
+ * POST/PUT/DELETE вернут 403.
+ *
+ * <p>Покрываемые сценарии:
+ * <ul>
+ *   <li>createPost: авторизован → 201; не авторизован → 401; пустой текст → 400</li>
+ *   <li>getWall: возвращает страницу постов; дефолтная пагинация</li>
+ *   <li>updatePost: 200 с обновлённым текстом; пустой текст → 400</li>
+ *   <li>deletePost: 204 No Content; не авторизован → 401</li>
+ * </ul>
+ */
 @WebMvcTest(PostController.class)
 @ActiveProfiles("test")
 class PostControllerTest {
@@ -39,7 +59,7 @@ class PostControllerTest {
     @MockBean PostService postService;
     @MockBean UserService userService;
 
-    // Security context dependencies required by SecurityConfig
+    // SecurityConfig требует этих бинов в контексте — без mock'ов контекст не запустится
     @MockBean com.socialnetwork.security.JwtAuthenticationFilter jwtAuthenticationFilter;
     @MockBean com.socialnetwork.security.OAuth2SuccessHandler oAuth2SuccessHandler;
     @MockBean com.socialnetwork.security.CustomUserDetailsService customUserDetailsService;

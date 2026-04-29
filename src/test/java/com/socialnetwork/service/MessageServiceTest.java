@@ -22,6 +22,22 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Юнит-тесты для {@link MessageService}.
+ *
+ * <p>Проверяет отправку личных сообщений и загрузку диалога с авто-прочтением.
+ * Тест {@code getDialog_marksMessagesAsRead} проверяет ключевой побочный эффект:
+ * при запросе диалога все непрочитанные входящие сообщения помечаются как прочитанные.
+ *
+ * <p>Покрываемые сценарии:
+ * <ul>
+ *   <li>sendMessage: успех с проверкой всех полей ответа</li>
+ *   <li>sendMessage самому себе → BadRequestException</li>
+ *   <li>sendMessage заблокированному пользователю → BadRequestException</li>
+ *   <li>sendMessage: проверка правильности имени отправителя в ответе</li>
+ *   <li>getDialog: markAsRead вызывается перед возвратом; двунаправленные сообщения; пустой диалог</li>
+ * </ul>
+ */
 @ExtendWith(MockitoExtension.class)
 class MessageServiceTest {
 

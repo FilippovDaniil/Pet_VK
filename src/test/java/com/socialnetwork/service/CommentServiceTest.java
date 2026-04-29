@@ -25,6 +25,21 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Юнит-тесты для {@link CommentService}.
+ *
+ * <p>Проверяет добавление, получение и удаление комментариев, включая проверки прав доступа.
+ * Вспомогательный метод {@code createBannedUser} позволяет тестировать поведение
+ * при попытке заблокированного пользователя оставить комментарий.
+ *
+ * <p>Покрываемые сценарии:
+ * <ul>
+ *   <li>addComment: успех; заблокированный пользователь → ForbiddenException</li>
+ *   <li>getComments: постраничный список; пустой пост → пустая страница</li>
+ *   <li>deleteComment: автор удаляет; не-автор → ForbiddenException; не найден → ResourceNotFoundException</li>
+ *   <li>deleteCommentByAdmin: успех; не найден → ResourceNotFoundException</li>
+ * </ul>
+ */
 @ExtendWith(MockitoExtension.class)
 class CommentServiceTest {
 

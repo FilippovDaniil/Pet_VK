@@ -23,15 +23,39 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Юнит-тесты для {@link AuthService}.
+ *
+ * <p>Использует Mockito через расширение {@code @ExtendWith(MockitoExtension.class)}.
+ * Все зависимости сервиса заменены mock-объектами — реальных баз данных и Redis нет.
+ * Это позволяет тестировать только бизнес-логику AuthService в изоляции.
+ *
+ * <p>Покрываемые сценарии:
+ * <ul>
+ *   <li>Успешная регистрация нового пользователя</li>
+ *   <li>Попытка регистрации с уже занятым email → BadRequestException</li>
+ *   <li>Успешный вход по корректным учётным данным</li>
+ *   <li>Вход с неверным паролем → BadCredentialsException</li>
+ * </ul>
+ */
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
+    /** Mock репозитория пользователей — проверяем вызовы save/existsByEmail/findByEmail. */
     @Mock UserRepository userRepository;
+    /** Mock BCrypt-кодировщика — возвращает фиктивный хеш, без реального вычисления. */
     @Mock PasswordEncoder passwordEncoder;
+    /** Mock провайдера JWT — возвращает предсказуемые токены в тестах. */
     @Mock JwtTokenProvider tokenProvider;
+    /** Mock сервиса refresh-токенов — изолирует Redis-зависимость. */
     @Mock RefreshTokenService refreshTokenService;
+    /** Mock сервиса чёрного списка JWT — изолирует Redis-зависимость. */
     @Mock BlacklistService blacklistService;
 
+    /**
+     * Тестируемый объект. @InjectMocks создаёт экземпляр AuthService
+     * и внедряет все поля, помеченные @Mock, через конструктор или setter.
+     */
     @InjectMocks AuthService authService;
 
     private RegisterRequest registerRequest;

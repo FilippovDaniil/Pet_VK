@@ -19,16 +19,38 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Интеграционные тесты HTTP-слоя для {@link AuthController}.
+ *
+ * <p>{@code @WebMvcTest} поднимает только MVC-контекст (фильтры, диспетчер, контроллер) —
+ * без полного Spring-контекста и без базы данных. Это быстрее, чем {@code @SpringBootTest}.
+ *
+ * <p>{@code @ActiveProfiles("test")} активирует {@code application-test.yml}, в котором
+ * обычно задаются in-memory настройки.
+ *
+ * <p>Все бины из SecurityConfig, которые требуют реальных зависимостей (Redis, JWT),
+ * заменяются {@code @MockBean} — иначе контекст не поднимется.
+ *
+ * <p>Покрываемые сценарии:
+ * <ul>
+ *   <li>Регистрация с корректными данными → HTTP 201 + JWT в ответе</li>
+ *   <li>Вход с корректными данными → HTTP 200 + JWT в ответе</li>
+ *   <li>Регистрация с невалидным email → HTTP 400 (Bean Validation)</li>
+ * </ul>
+ */
 @WebMvcTest(controllers = AuthController.class)
 @ActiveProfiles("test")
 class AuthControllerTest {
 
+    /** MockMvc — инструмент для отправки HTTP-запросов без реального сервера. */
     @Autowired MockMvc mockMvc;
+    /** Jackson ObjectMapper для сериализации DTO в JSON-строку запроса. */
     @Autowired ObjectMapper objectMapper;
 
+    /** Mock сервиса аутентификации — контроллер делегирует всю логику ему. */
     @MockBean AuthService authService;
 
-    // Required by security config context
+    // SecurityConfig требует этих бинов в контексте — без mock'ов контекст не запустится
     @MockBean com.socialnetwork.security.JwtAuthenticationFilter jwtAuthenticationFilter;
     @MockBean com.socialnetwork.security.OAuth2SuccessHandler oAuth2SuccessHandler;
     @MockBean com.socialnetwork.security.CustomUserDetailsService customUserDetailsService;
