@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: 1234
       POSTGRES_DB: social_network
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -41,25 +41,16 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
-    healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # ── Kafka ───────────────────────────────────────────────────────────────────
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     container_name: sn-kafka
     depends_on:
-      zookeeper:
-        condition: service_healthy
+      - zookeeper
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      # Two listeners:
-      #   INTERNAL — used by the app container (kafka:29092)
-      #   EXTERNAL — used from your host machine (localhost:9092)
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
@@ -68,31 +59,21 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
     ports:
       - "9092:9092"
-    healthcheck:
-      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
 
   # ── Spring Boot App ─────────────────────────────────────────────────────────
   app:
-    build: .
+    image: pet_vk-app:latest
     container_name: sn-app
     ports:
-      - "8080:8080"
+      - "8777:8080"
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      # Override datasource to use Docker service names
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/social_network
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 1234
-      # Redis
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      # Kafka — use internal Docker listener
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      # JWT secret (change in production!)
       JWT_SECRET: mySecretKeyWhichShouldBeAtLeast32CharsLong!!
     depends_on:
       postgres:
@@ -100,7 +81,7 @@ services:
       redis:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        condition: service_started
     volumes:
       - uploads_data:/app/uploads/avatars
     restart: on-failure

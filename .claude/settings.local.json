@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(docker-compose up *)",
+      "Bash(docker buildx *)",
+      "Bash(docker system *)",
+      "Bash(docker-compose build *)",
+      "Bash(java -version)",
+      "Bash(javac -version)",
+      "Bash(python -m json.tool)",
+      "Bash(sed -i \"s|const BASE = 'http://localhost:8080';|const BASE = 'http://localhost:8777';|g\" \"C:/Users/MaxxPC/IdeaProjects/Pet_VK/src/main/resources/static/index.html\")",
+      "Bash(sed -i \"s|const BASE = 'http://localhost:8080';|const BASE = 'http://localhost:8777';|g\" \"C:/Users/MaxxPC/IdeaProjects/Pet_VK/frontend/index.html\")"
     ]
   }
 }

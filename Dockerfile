@@ -1,31 +1,24 @@
-# ── Stage 1: Build JAR ──────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jdk-alpine AS builder
+# Single-stage build — uses only eclipse-temurin:21-jdk-alpine
+FROM eclipse-temurin:21-jdk-alpine
 
 WORKDIR /app
 
-# Copy Gradle wrapper and build files first (Docker layer cache)
+# Copy Gradle wrapper and config first (Docker layer cache)
 COPY gradlew gradlew
 COPY gradle/ gradle/
 COPY build.gradle settings.gradle ./
+RUN chmod +x gradlew
 
-# Download dependencies before copying source (cached if build.gradle unchanged)
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon || true
+# Download dependencies (cached layer if build.gradle unchanged)
+RUN ./gradlew dependencies --no-daemon -q || true
 
-# Copy source and build
+# Copy source and build JAR
 COPY src/ src/
 RUN ./gradlew bootJar --no-daemon -x test
 
-# ── Stage 2: Run ─────────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine
-
-WORKDIR /app
-
-# Create uploads directory
+# Create uploads dir and expose port
 RUN mkdir -p uploads/avatars
-
-# Copy JAR from builder stage
-COPY --from=builder /app/build/libs/*.jar app.jar
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "build/libs/social-network-0.0.1-SNAPSHOT.jar"]

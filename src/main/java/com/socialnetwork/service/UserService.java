@@ -24,63 +24,188 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
 
-@Service
-@RequiredArgsConstructor
-@Slf4j
+/**
+ * Сервис управления профилями пользователей.
+ *
+ * <p>Отвечает за:
+ * <ul>
+ *   <li>Получение пользователей по id и email (с кэшированием)</li>
+ *   <li>Обновление профиля (имя, фамилия, биография)</li>
+ *   <li>Загрузку аватара на файловую систему сервера</li>
+ *   <li>Полнотекстовый поиск пользователей с пагинацией</li>
+ * </ul>
+ *
+ * <p>Кэширование реализовано через Spring Cache (обычно Redis или Caffeine).
+ * При обновлении данных пользователя кэш автоматически инвалидируется
+ * аннотацией {@code @CacheEvict}, чтобы следующий запрос получил свежие данные.
+ */
+@Service            // Регистрирует класс как Spring-бин сервисного слоя
+@RequiredArgsConstructor // Lombok: конструктор для всех final-полей — внедрение зависимостей
+@Slf4j              // Lombok: создаёт logger (SLF4J) для логирования событий
 public class UserService {
 
+    // Путь к каталогу загрузки файлов берётся из application.properties/yml:
+    // app.upload.path=/var/uploads/avatars (или иной настроенный путь)
     @Value("${app.upload.path}")
     private String uploadPath;
 
+    // Репозиторий JPA для всех операций с таблицей пользователей
     private final UserRepository userRepository;
 
-    @Cacheable(value = "users", key = "#id")
+    /**
+     * Возвращает пользователя по id с кэшированием результата.
+     *
+     * <p>При первом вызове выполняет запрос к БД и сохраняет результат в кэше
+     * {@code users} под ключом {@code id}. При последующих вызовах с тем же id
+     * Spring возвращает объект прямо из кэша, минуя БД.
+     *
+     * <p>Используется другими сервисами (FriendService, PostService и т.д.)
+     * как единая точка получения пользователя — благодаря кэшу повторные
+     * обращения к одному пользователю в рамках одного запроса не бьют в БД.
+     *
+     * @param id идентификатор пользователя
+     * @return найденная сущность {@link User}
+     * @throws ResourceNotFoundException если пользователь с таким id не существует
+     */
+    @Cacheable(value = "users", key = "#id") // Кэшируем результат; ключ кэша = id пользователя
     public User getUserById(Long id) {
+        // orElseThrow пробрасывает 404-исключение, если пользователь не найден
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));
     }
 
+    /**
+     * Возвращает пользователя по email без кэширования.
+     *
+     * <p>Используется при аутентификации и в Spring Security UserDetailsService.
+     * Кэширование по email не применяется, так как поиск по email происходит
+     * только при входе в систему и не требует оптимизации повторных запросов.
+     *
+     * @param email адрес электронной почты (уникальный)
+     * @return найденная сущность {@link User}
+     * @throws ResourceNotFoundException если пользователь не найден
+     */
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
     }
 
-    @Transactional
-    @CacheEvict(value = "users", key = "#userId")
+    /**
+     * Обновляет профильные данные пользователя и инвалидирует кэш.
+     *
+     * <p>Обновляются только те поля, которые явно переданы (не пустые строки).
+     * Это позволяет делать частичное обновление профиля: если клиент
+     * передаёт только новую биографию, имя и фамилия остаются прежними.
+     *
+     * <p>{@code @CacheEvict} удаляет запись из кэша {@code users} после успешного
+     * сохранения, чтобы следующий {@code getUserById} загрузил актуальные данные.
+     *
+     * @param userId  id пользователя, чей профиль обновляется
+     * @param request DTO с новыми значениями полей (могут быть null/пустыми)
+     * @return обновлённый профиль в виде {@link UserResponse}
+     */
+    @Transactional  // Транзакция гарантирует атомарность: сохранение и инвалидация кэша — одно целое
+    @CacheEvict(value = "users", key = "#userId") // Удаляем устаревшую запись из кэша после обновления
     public UserResponse updateProfile(Long userId, UpdateProfileRequest request) {
+        // Получаем managed-сущность из БД (или кэша) для последующего обновления
         User user = getUserById(userId);
+
+        // StringUtils.hasText() проверяет, что строка не null и не состоит только из пробелов
+        // Это позволяет клиенту не передавать поле, если оно не должно меняться
         if (StringUtils.hasText(request.getFirstName())) user.setFirstName(request.getFirstName());
-        if (StringUtils.hasText(request.getLastName())) user.setLastName(request.getLastName());
+        if (StringUtils.hasText(request.getLastName()))  user.setLastName(request.getLastName());
+
+        // Биография может быть намеренно очищена (пустая строка допустима),
+        // поэтому проверяем только на null, а не на hasText
         if (request.getBio() != null) user.setBio(request.getBio());
+
+        // Сохраняем изменения в БД и сразу возвращаем DTO без повторного запроса
         return UserResponse.from(userRepository.save(user));
     }
 
+    /**
+     * Загружает файл аватара на сервер и обновляет ссылку на него в профиле.
+     *
+     * <p>Файл сохраняется с UUID-именем, чтобы избежать коллизий имён и
+     * предотвратить path-traversal атаки (злоумышленник не может управлять именем файла).
+     * Расширение оригинального файла сохраняется для корректного определения типа браузером.
+     *
+     * <p>{@code @CacheEvict} инвалидирует кэш, так как {@code avatarUrl} изменился.
+     *
+     * @param userId id пользователя
+     * @param file   загружаемый файл (multipart/form-data)
+     * @return обновлённый профиль со ссылкой на новый аватар
+     * @throws BadRequestException если файл пустой
+     * @throws IOException         если произошла ошибка при записи на диск
+     */
     @Transactional
-    @CacheEvict(value = "users", key = "#userId")
+    @CacheEvict(value = "users", key = "#userId") // Сбрасываем кэш, т.к. avatarUrl изменился
     public UserResponse uploadAvatar(Long userId, MultipartFile file) throws IOException {
+        // Пустой файл — ошибка клиента; проверяем до попытки сохранения
         if (file.isEmpty()) {
             throw new BadRequestException("File is empty");
         }
+
+        // Извлекаем расширение файла (.jpg, .png и т.д.) для сохранения в имени
         String ext = getExtension(file.getOriginalFilename());
+
+        // UUID гарантирует уникальность имени файла и исключает перезапись чужих аватаров
         String filename = UUID.randomUUID() + ext;
+
+        // Получаем объект пути к каталогу загрузки (настроен в application.properties)
         Path dir = Paths.get(uploadPath);
+
+        // Создаём каталог и все промежуточные директории, если их ещё нет
         Files.createDirectories(dir);
+
+        // Копируем байты файла из HTTP-запроса в файл на диске
         Files.copy(file.getInputStream(), dir.resolve(filename));
 
+        // Загружаем пользователя из БД для обновления ссылки на аватар
         User user = getUserById(userId);
+
+        // Формируем публичный URL аватара, который будет возвращаться клиентам
+        // Этот путь должен быть настроен в StaticResourceConfig как раздача статики
         user.setAvatarUrl("/uploads/avatars/" + filename);
+
+        // Сохраняем обновлённый URL в БД
         return UserResponse.from(userRepository.save(user));
     }
 
+    /**
+     * Ищет пользователей по подстроке в имени или email с постраничной выборкой.
+     *
+     * <p>Делегирует выполнение кастомному JPQL-запросу в {@code UserRepository#searchByQuery}.
+     * Результат оборачивается в {@link Page}, что позволяет клиенту получать
+     * данные порционно и не загружать всех пользователей в память.
+     *
+     * @param query строка поиска (подстрока имени, фамилии или email)
+     * @param page  номер страницы (начиная с 0)
+     * @param size  количество записей на странице
+     * @return страница с DTO пользователей, удовлетворяющих запросу
+     */
     public Page<UserResponse> searchUsers(String query, int page, int size) {
+        // PageRequest.of() создаёт объект пагинации с номером страницы и размером
         return userRepository.searchByQuery(query, PageRequest.of(page, size))
+                // Преобразуем каждую сущность User в UserResponse через статический фабричный метод
                 .map(UserResponse::from);
     }
 
+    /**
+     * Извлекает расширение файла (включая точку) из его имени.
+     *
+     * <p>Например, для «avatar.jpeg» вернёт «.jpeg».
+     * Если файл без расширения — вернёт пустую строку.
+     *
+     * @param filename оригинальное имя файла из multipart-запроса
+     * @return расширение с точкой или пустая строка
+     */
     private String getExtension(String filename) {
+        // Проверяем, что имя не null и содержит точку (иначе расширения нет)
         if (filename != null && filename.contains(".")) {
+            // lastIndexOf('.') находим последнюю точку — защита от имён вида «file.tar.gz»
             return filename.substring(filename.lastIndexOf('.'));
         }
-        return "";
+        return ""; // Файл без расширения — возвращаем пустую строку
     }
 }
