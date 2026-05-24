@@ -10,7 +10,26 @@
       "Bash(javac -version)",
       "Bash(python -m json.tool)",
       "Bash(sed -i \"s|const BASE = 'http://localhost:8080';|const BASE = 'http://localhost:8777';|g\" \"C:/Users/MaxxPC/IdeaProjects/Pet_VK/src/main/resources/static/index.html\")",
-      "Bash(sed -i \"s|const BASE = 'http://localhost:8080';|const BASE = 'http://localhost:8777';|g\" \"C:/Users/MaxxPC/IdeaProjects/Pet_VK/frontend/index.html\")"
+      "Bash(sed -i \"s|const BASE = 'http://localhost:8080';|const BASE = 'http://localhost:8777';|g\" \"C:/Users/MaxxPC/IdeaProjects/Pet_VK/frontend/index.html\")",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\MaxxPC\\\\IdeaProjects\\\\Pet_VK\" -Force | Select-Object Name, @{Name=\"Type\"; Expression={if\\($_.PSIsContainer\\){\"Folder\"}else{\"File\"}}} | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\MaxxPC\\\\IdeaProjects\\\\Pet_VK\" -Directory | Where-Object {$_.Name -match \"rancher|k8s|kubernetes\"} | Select-Object FullName)",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\MaxxPC\\\\IdeaProjects\\\\Pet_VK\\\\rancher\\\\k8s\")",
+      "Bash(Out-Null)",
+      "PowerShell(New-Item *)",
+      "Bash(./gradlew test *)",
+      "Bash(git stash *)",
+      "Bash(Select-Object -Last 20)",
+      "Bash(kubectl apply *)",
+      "PowerShell(kubectl apply *)",
+      "PowerShell(kubectl get pods *)",
+      "Bash(awk '{print $3}')",
+      "Bash(awk '{print $2}')",
+      "Bash(kubectl rollout status *)",
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:30777/actuator/health\" -UseBasicParsing 2>&1 | Select-Object StatusCode, Content)",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://localhost:30777/swagger-ui.html\" -UseBasicParsing -MaximumRedirection 0 -ErrorAction SilentlyContinue; \"Status: $\\($r.StatusCode\\)\")",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://localhost:30777/v3/api-docs\" -UseBasicParsing -ErrorAction SilentlyContinue; \"Status: $\\($r.StatusCode\\)\"; $r.Content.Substring\\(0,[Math]::Min\\(200, $r.Content.Length\\)\\))",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
