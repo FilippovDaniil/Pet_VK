@@ -2,8 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PetVK — Social Network</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#5b8dee">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PetVK">
+<link rel="apple-touch-icon" href="/icons/icon.svg">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -187,7 +197,7 @@ textarea { resize: vertical; min-height: 80px; }
 /* Empty state */
 .empty { text-align: center; padding: 32px; color: var(--text-secondary); font-size: 14px; }
 
-/* Responsive sidebar */
+/* Responsive sidebar — tablet */
 @media (max-width: 768px) {
   :root { --sidebar-w: 56px; }
   .nav-item span { display: none; }
@@ -195,11 +205,124 @@ textarea { resize: vertical; min-height: 80px; }
   .app-logo { font-size: 18px; }
   #content { padding: 16px; }
 }
+
+/* ── Mobile header (fixed top bar) ─────────────────────────────── */
+#mobile-header {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  background: var(--bg-dark);
+  z-index: 200;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--bg-dark-3);
+  flex-shrink: 0;
+}
+#mobile-header .mobile-logo { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+#mobile-header .mobile-user { font-size: 11px; color: var(--text-secondary); flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 8px; }
+#mobile-header .mobile-logout-btn {
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 22px; cursor: pointer; padding: 8px; line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: color .2s;
+}
+#mobile-header .mobile-logout-btn:active { color: var(--accent-danger); }
+
+/* ── Bottom navigation bar ──────────────────────────────────────── */
+#bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: var(--bg-dark);
+  border-top: 1px solid var(--bg-dark-3);
+  z-index: 200;
+  align-items: center;
+  justify-content: space-around;
+}
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 60px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 500;
+  gap: 2px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: color .15s;
+  padding: 0;
+}
+.bottom-nav-item .icon { font-size: 22px; line-height: 1; }
+.bottom-nav-item.active { color: var(--accent); }
+.bottom-nav-item:active { opacity: .7; }
+
+/* ── Mobile layout (≤600px) ─────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Hide sidebar, show mobile chrome */
+  #sidebar { display: none !important; }
+  #mobile-header { display: flex; }
+  #bottom-nav { display: flex; }
+
+  /* Content offset for fixed header + bottom nav */
+  #content { padding: 64px 12px 72px; }
+
+  /* Auth card full-width */
+  .auth-card { padding: 24px 20px; margin: 16px; max-width: calc(100% - 32px); }
+
+  /* Touch-friendly buttons */
+  .btn { min-height: 44px; padding: 10px 16px; }
+  .btn-sm { min-height: 36px; padding: 8px 12px; font-size: 12px; }
+  input[type=text], input[type=email], input[type=password], textarea, select {
+    min-height: 44px;
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  /* Input rows wrap on narrow screens */
+  .input-row { flex-wrap: wrap; }
+  .input-row input { min-width: 0; }
+  .input-row .btn { flex-shrink: 0; }
+
+  /* User cards: wrap actions below */
+  .user-card { flex-wrap: wrap; gap: 10px; }
+  .user-actions { width: 100%; justify-content: flex-start; }
+
+  /* Admin table: horizontal scroll */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Messages: adjust height */
+  .msg-container { height: calc(100dvh - 260px); }
+
+  /* Toast: full-width at top */
+  #toast-container { left: 12px; right: 12px; top: 60px; }
+  .toast { min-width: unset; max-width: 100%; }
+
+  /* Post image full-width */
+  .post-image { width: 100%; max-height: 280px; object-fit: cover; }
+
+  /* Grid collapses earlier */
+  .grid-2 { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 <div id="toast-container"></div>
 <div id="app" style="display:none">
+  <!-- Mobile top bar (visible only on ≤600px) -->
+  <header id="mobile-header">
+    <span class="mobile-logo">PetVK</span>
+    <span id="mobile-user-email" class="mobile-user"></span>
+    <button class="mobile-logout-btn" onclick="logout()" title="Logout">⇥</button>
+  </header>
+
   <aside id="sidebar">
     <div class="sidebar-header">
       <div class="app-logo">PetVK</div>
@@ -313,9 +436,31 @@ textarea { resize: vertical; min-height: 80px; }
         </div>
       </div>
       <div class="section-title">All Users</div>
-      <div id="admin-users"></div>
+      <div id="admin-users" class="table-scroll"></div>
     </section>
   </main>
+
+  <!-- Bottom navigation (visible only on ≤600px) -->
+  <nav id="bottom-nav">
+    <button class="bottom-nav-item" data-page="wall" onclick="navigate('wall')">
+      <span class="icon">🏠</span><span>Wall</span>
+    </button>
+    <button class="bottom-nav-item" data-page="friends" onclick="navigate('friends')">
+      <span class="icon">👥</span><span>Friends</span>
+    </button>
+    <button class="bottom-nav-item" data-page="messages" onclick="navigate('messages')">
+      <span class="icon">💬</span><span>Msgs</span>
+    </button>
+    <button class="bottom-nav-item" data-page="groups" onclick="navigate('groups')">
+      <span class="icon">🔖</span><span>Groups</span>
+    </button>
+    <button class="bottom-nav-item" data-page="search" onclick="navigate('search')">
+      <span class="icon">🔍</span><span>Search</span>
+    </button>
+    <button class="bottom-nav-item admin-only" data-page="admin" onclick="navigate('admin')" style="display:none">
+      <span class="icon">⚙️</span><span>Admin</span>
+    </button>
+  </nav>
 </div>
 
 <!-- AUTH SCREENS (outside #app) -->
@@ -343,7 +488,7 @@ textarea { resize: vertical; min-height: 80px; }
 </div>
 
 <script>
-const BASE = '';
+const BASE = window.location.origin;
 let currentUser = null;
 let wallPage = 0;
 let wallHasMore = true;
@@ -476,8 +621,10 @@ function bootApp() {
   document.getElementById('app').style.display = 'flex';
   document.getElementById('sidebar-user').style.display = '';
   document.getElementById('sidebar-email').textContent = currentUser.email;
-  const adminNav = document.querySelector('.admin-only');
-  adminNav.style.display = currentUser.role === 'ROLE_ADMIN' ? '' : 'none';
+  document.getElementById('mobile-user-email').textContent = currentUser.email;
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = currentUser.role === 'ROLE_ADMIN' ? '' : 'none';
+  });
   navigate('wall');
 }
 
@@ -485,11 +632,10 @@ function bootApp() {
 function navigate(page) {
   stopMsgPolling();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(n => n.classList.remove('active'));
   const pg = document.getElementById(`page-${page}`);
   if (pg) pg.classList.add('active');
-  const nav = document.querySelector(`[data-page="${page}"]`);
-  if (nav) nav.classList.add('active');
+  document.querySelectorAll(`[data-page="${page}"]`).forEach(n => n.classList.add('active'));
   if (page === 'wall') { wallPage = 0; wallHasMore = true; loadWall(true); }
   if (page === 'friends') loadFriends();
   if (page === 'groups') loadMyGroups();
@@ -796,6 +942,15 @@ async function adminUnbanById(uid) {
 
 /* ── Boot ───────────────────────────────────────────────────────────── */
 bootApp();
+
+/* ── Service Worker ─────────────────────────────────────────────────── */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('[SW] Registered, scope:', reg.scope))
+      .catch(err => console.warn('[SW] Registration failed:', err));
+  });
+}
 </script>
 </body>
 </html>

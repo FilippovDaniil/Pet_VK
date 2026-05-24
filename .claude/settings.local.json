@@ -30,7 +30,11 @@
       "PowerShell($r = Invoke-WebRequest -Uri \"http://localhost:30777/v3/api-docs\" -UseBasicParsing -ErrorAction SilentlyContinue; \"Status: $\\($r.StatusCode\\)\"; $r.Content.Substring\\(0,[Math]::Min\\(200, $r.Content.Length\\)\\))",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(Select-Object -Last 30)"
+      "Bash(Select-Object -Last 30)",
+      "Bash(python3 *)",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\MaxxPC\\\\IdeaProjects\\\\Pet_VK\\\\frontend\\\\icons\")",
+      "Bash(Write-Host \"OK\")",
+      "PowerShell(Copy-Item *)"
     ]
   }
 }

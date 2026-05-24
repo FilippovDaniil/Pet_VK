@@ -1,0 +1,27 @@
+{
+  "name": "PetVK — Social Network",
+  "short_name": "PetVK",
+  "description": "Social network for your community",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1a1d23",
+  "theme_color": "#5b8dee",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["social", "communication"],
+  "screenshots": []
+}
