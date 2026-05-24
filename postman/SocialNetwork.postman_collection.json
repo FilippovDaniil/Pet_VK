@@ -634,17 +634,25 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/users/search?query=john",
+              "raw": "{{baseUrl}}/api/users/search?query=john&page=0&size=20",
               "host": ["{{baseUrl}}"],
               "path": ["api", "users", "search"],
               "query": [
                 {
                   "key": "query",
                   "value": "john"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
                 }
               ]
             },
-            "description": "Search users by name or email. Returns a list of matching user profiles."
+            "description": "Search users by name or email via OpenSearch (full-text, fuzziness AUTO). Returns a paginated Page<UserResponse>."
           },
           "response": [
             {
@@ -653,13 +661,21 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/users/search?query=john",
+                  "raw": "{{baseUrl}}/api/users/search?query=john&page=0&size=20",
                   "host": ["{{baseUrl}}"],
                   "path": ["api", "users", "search"],
                   "query": [
                     {
                       "key": "query",
                       "value": "john"
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
                     }
                   ]
                 }
@@ -673,7 +689,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "[\n  {\n    \"id\": 1,\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"avatarUrl\": null\n  },\n  {\n    \"id\": 3,\n    \"firstName\": \"Johnny\",\n    \"lastName\": \"Bravo\",\n    \"avatarUrl\": null\n  }\n]"
+              "body": "{\n  \"content\": [\n    {\n      \"id\": 1,\n      \"firstName\": \"John\",\n      \"lastName\": \"Doe\",\n      \"email\": \"john@test.com\",\n      \"avatarUrl\": null,\n      \"role\": \"ROLE_USER\",\n      \"banned\": false\n    }\n  ],\n  \"totalElements\": 1,\n  \"totalPages\": 1,\n  \"size\": 20,\n  \"number\": 0,\n  \"last\": true\n}"
             }
           ],
           "event": [
@@ -686,8 +702,11 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Response is an array', function () {",
-                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "pm.test('Response is a paginated Page object', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('content');",
+                  "    pm.expect(json.content).to.be.an('array');",
+                  "    pm.expect(json).to.have.property('totalElements');",
                   "});"
                 ]
               }
@@ -1576,7 +1595,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"postId\": {{postId}},\n  \"text\": \"Great post!\"\n}",
+              "raw": "{\n  \"text\": \"Great post!\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1584,11 +1603,11 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/comments",
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "comments"]
+              "path": ["api", "posts", "{{postId}}", "comments"]
             },
-            "description": "Add a new comment to a post."
+            "description": "Add a comment to a post. postId is a path variable; body contains only 'text'."
           },
           "response": [
             {
@@ -1598,12 +1617,12 @@
                 "header": [],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"postId\": 1,\n  \"text\": \"Great post!\"\n}"
+                  "raw": "{\n  \"text\": \"Great post!\"\n}"
                 },
                 "url": {
-                  "raw": "{{baseUrl}}/api/comments",
+                  "raw": "{{baseUrl}}/api/posts/1/comments",
                   "host": ["{{baseUrl}}"],
-                  "path": ["api", "comments"]
+                  "path": ["api", "posts", "1", "comments"]
                 }
               },
               "status": "Created",
@@ -1649,9 +1668,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/comments/{{postId}}?page=0&size=20",
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments?page=0&size=20",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "comments", "{{postId}}"],
+              "path": ["api", "posts", "{{postId}}", "comments"],
               "query": [
                 {
                   "key": "page",
@@ -1663,7 +1682,7 @@
                 }
               ]
             },
-            "description": "Get paginated comments for a specific post."
+            "description": "Get paginated comments for a post. Comments are sub-resource of posts."
           },
           "response": [
             {
@@ -1672,9 +1691,9 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/comments/1?page=0&size=20",
+                  "raw": "{{baseUrl}}/api/posts/1/comments?page=0&size=20",
                   "host": ["{{baseUrl}}"],
-                  "path": ["api", "comments", "1"],
+                  "path": ["api", "posts", "1", "comments"],
                   "query": [
                     {
                       "key": "page",
@@ -1912,34 +1931,29 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/groups/{{groupId}}/join",
+              "raw": "{{baseUrl}}/api/groups/{{groupId}}/members",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "groups", "{{groupId}}", "join"]
+              "path": ["api", "groups", "{{groupId}}", "members"]
             },
-            "description": "Join a group as a member."
+            "description": "Join a group as a member. Membership is a sub-resource: POST creates it."
           },
           "response": [
             {
-              "name": "200 OK - Joined",
+              "name": "204 No Content - Joined",
               "originalRequest": {
                 "method": "POST",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/groups/1/join",
+                  "raw": "{{baseUrl}}/api/groups/1/members",
                   "host": ["{{baseUrl}}"],
-                  "path": ["api", "groups", "1", "join"]
+                  "path": ["api", "groups", "1", "members"]
                 }
               },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"message\": \"Successfully joined group\",\n  \"groupId\": 1,\n  \"userId\": 1\n}"
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "body": ""
             }
           ],
           "event": [
@@ -1948,8 +1962,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status code is 200 OK', function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
                   "});"
                 ]
               }
@@ -1959,25 +1973,70 @@
         {
           "name": "Leave Group",
           "request": {
-            "method": "POST",
+            "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/groups/{{groupId}}/leave",
+              "raw": "{{baseUrl}}/api/groups/{{groupId}}/members",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "groups", "{{groupId}}", "leave"]
+              "path": ["api", "groups", "{{groupId}}", "members"]
             },
-            "description": "Leave a group."
+            "description": "Leave a group. DELETE removes the membership sub-resource."
           },
           "response": [
             {
-              "name": "200 OK - Left",
+              "name": "204 No Content - Left",
               "originalRequest": {
-                "method": "POST",
+                "method": "DELETE",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/groups/1/leave",
+                  "raw": "{{baseUrl}}/api/groups/1/members",
                   "host": ["{{baseUrl}}"],
-                  "path": ["api", "groups", "1", "leave"]
+                  "path": ["api", "groups", "1", "members"]
+                }
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "body": ""
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Groups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/groups/my",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groups", "my"]
+            },
+            "description": "Get all groups the current authenticated user is a member of."
+          },
+          "response": [
+            {
+              "name": "200 OK - My groups",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/groups/my",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "groups", "my"]
                 }
               },
               "status": "OK",
@@ -1989,7 +2048,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"Successfully left group\",\n  \"groupId\": 1,\n  \"userId\": 1\n}"
+              "body": "[\n  {\n    \"id\": 1,\n    \"name\": \"Java Devs\",\n    \"description\": \"Group for Java developers\",\n    \"ownerId\": 1,\n    \"membersCount\": 5,\n    \"createdAt\": \"2024-03-10T12:30:00Z\"\n  }\n]"
             }
           ],
           "event": [
@@ -2000,6 +2059,10 @@
                 "exec": [
                   "pm.test('Status code is 200 OK', function () {",
                   "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is an array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
                   "});"
                 ]
               }
