@@ -1,0 +1,85 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opensearch-pvc
+  namespace: pet-vk
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opensearch
+  namespace: pet-vk
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opensearch
+  template:
+    metadata:
+      labels:
+        app: opensearch
+    spec:
+      # vm.max_map_count=262144 обязателен для OpenSearch (иначе Exit 78)
+      # Устанавливается через привилегированный initContainer в Linux VM Rancher Desktop
+      initContainers:
+        - name: sysctl-fix
+          image: busybox:1.36
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+      containers:
+        - name: opensearch
+          # IfNotPresent — публичный образ, не загружаем вручную как кастомный
+          image: opensearchproject/opensearch:2.17.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: discovery.type
+              value: single-node
+            - name: DISABLE_SECURITY_PLUGIN
+              value: "true"
+            - name: bootstrap.memory_lock
+              value: "false"
+            - name: OPENSEARCH_JAVA_OPTS
+              value: "-Xms512m -Xmx512m"
+          ports:
+            - containerPort: 9200
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/opensearch/data
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health
+              port: 9200
+            initialDelaySeconds: 40
+            periodSeconds: 10
+            failureThreshold: 6
+          resources:
+            requests:
+              memory: "600Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: opensearch-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch
+  namespace: pet-vk
+spec:
+  selector:
+    app: opensearch
+  ports:
+    - port: 9200
+      targetPort: 9200
+  type: ClusterIP

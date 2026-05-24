@@ -45,31 +45,25 @@ public class MessageService {
      * @return DTO сохранённого сообщения
      * @throws BadRequestException если получатель — сам отправитель или заблокирован
      */
-    @Transactional // Транзакция: сохранение сообщения должно быть атомарным
-    public MessageResponse sendMessage(Long senderId, MessageRequest request) {
-        // Нельзя отправить сообщение самому себе — бизнес-правило социальной сети
-        if (senderId.equals(request.getRecipientId())) {
+    @Transactional
+    public MessageResponse sendMessage(Long senderId, Long recipientId, MessageRequest request) {
+        if (senderId.equals(recipientId)) {
             throw new BadRequestException("Cannot send message to yourself");
         }
 
-        // Загружаем отправителя и получателя — проверяем их существование
         User sender = userService.getUserById(senderId);
-        User recipient = userService.getUserById(request.getRecipientId());
+        User recipient = userService.getUserById(recipientId);
 
-        // Заблокированным пользователям нельзя писать — они отключены от общения на платформе
         if (recipient.isBanned()) {
             throw new BadRequestException("Recipient is banned");
         }
 
-        // Создаём сущность сообщения через Builder
-        // read = false устанавливается по умолчанию (аннотация @Builder.Default в Message)
         Message message = Message.builder()
                 .sender(sender)
                 .recipient(recipient)
-                .text(request.getText())
+                .text(request.getContent())
                 .build();
 
-        // Сохраняем и возвращаем DTO с заполненным id и createdAt
         return MessageResponse.from(messageRepository.save(message));
     }
 

@@ -93,26 +93,37 @@ public class FriendController {
     }
 
     /**
-     * Ответ на заявку в друзья: принять или отклонить.
+     * Принятие заявки в друзья.
      *
-     * <p>Изменяет статус заявки: {@code PENDING -> ACCEPTED} или {@code PENDING -> REJECTED}.
-     * При принятии оба пользователя становятся друзьями.
+     * <p>Изменяет статус заявки: PENDING → ACCEPTED. Оба пользователя становятся друзьями.
+     * Только адресат заявки (получатель) вправе её принять.
      *
      * @param userDetails данные текущего пользователя (должен быть получателем заявки)
      * @param requestId   ID заявки в друзья
-     * @param action      строка "accept" для принятия или "reject" для отклонения
-     * @return обновлённый {@link FriendRequestResponse} с новым статусом
-     *
-     * <p>{@code @PutMapping("/requests/{requestId}")} — HTTP PUT /api/friends/requests/{requestId}.
-     * {@code @RequestParam String action} — параметр из строки запроса (?action=accept).
+     * @return обновлённый {@link FriendRequestResponse} со статусом ACCEPTED
      */
-    @PutMapping("/requests/{requestId}")
-    @Operation(summary = "Accept or reject friend request (action=accept|reject)")
-    public FriendRequestResponse respond(@AuthenticationPrincipal UserDetails userDetails,
-                                          @PathVariable Long requestId,
-                                          @RequestParam String action) {
-        // Обрабатываем ответ на заявку с проверкой, что текущий пользователь — её адресат
-        return friendService.respondToRequest(requestId, action, getCurrentUserId(userDetails));
+    @PutMapping("/requests/{requestId}/accept")
+    @Operation(summary = "Accept friend request")
+    public FriendRequestResponse accept(@AuthenticationPrincipal UserDetails userDetails,
+                                        @PathVariable Long requestId) {
+        return friendService.respondToRequest(requestId, "accept", getCurrentUserId(userDetails));
+    }
+
+    /**
+     * Отклонение заявки в друзья.
+     *
+     * <p>Изменяет статус заявки: PENDING → DECLINED. Запись остаётся в БД (история).
+     * Только адресат заявки вправе её отклонить.
+     *
+     * @param userDetails данные текущего пользователя
+     * @param requestId   ID заявки в друзья
+     * @return обновлённый {@link FriendRequestResponse} со статусом DECLINED
+     */
+    @PutMapping("/requests/{requestId}/reject")
+    @Operation(summary = "Reject friend request")
+    public FriendRequestResponse reject(@AuthenticationPrincipal UserDetails userDetails,
+                                        @PathVariable Long requestId) {
+        return friendService.respondToRequest(requestId, "reject", getCurrentUserId(userDetails));
     }
 
     /**

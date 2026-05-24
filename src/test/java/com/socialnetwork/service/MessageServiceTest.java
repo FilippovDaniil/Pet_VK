@@ -22,22 +22,6 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/**
- * Юнит-тесты для {@link MessageService}.
- *
- * <p>Проверяет отправку личных сообщений и загрузку диалога с авто-прочтением.
- * Тест {@code getDialog_marksMessagesAsRead} проверяет ключевой побочный эффект:
- * при запросе диалога все непрочитанные входящие сообщения помечаются как прочитанные.
- *
- * <p>Покрываемые сценарии:
- * <ul>
- *   <li>sendMessage: успех с проверкой всех полей ответа</li>
- *   <li>sendMessage самому себе → BadRequestException</li>
- *   <li>sendMessage заблокированному пользователю → BadRequestException</li>
- *   <li>sendMessage: проверка правильности имени отправителя в ответе</li>
- *   <li>getDialog: markAsRead вызывается перед возвратом; двунаправленные сообщения; пустой диалог</li>
- * </ul>
- */
 @ExtendWith(MockitoExtension.class)
 class MessageServiceTest {
 
@@ -45,10 +29,6 @@ class MessageServiceTest {
     @Mock UserService userService;
 
     @InjectMocks MessageService messageService;
-
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
 
     private User createUser(Long id, Role role) {
         return User.builder()
@@ -72,10 +52,9 @@ class MessageServiceTest {
                 .build();
     }
 
-    private MessageRequest createRequest(Long recipientId, String text) {
+    private MessageRequest createRequest(String content) {
         MessageRequest req = new MessageRequest();
-        req.setRecipientId(recipientId);
-        req.setText(text);
+        req.setContent(content);
         return req;
     }
 
@@ -89,15 +68,10 @@ class MessageServiceTest {
                 .build();
     }
 
-    // -------------------------------------------------------------------------
-    // sendMessage
-    // -------------------------------------------------------------------------
-
     @Test
     void sendMessage_success() {
         User sender = createUser(1L, Role.ROLE_USER);
         User recipient = createUser(2L, Role.ROLE_USER);
-        MessageRequest request = createRequest(2L, "Hello!");
 
         when(userService.getUserById(1L)).thenReturn(sender);
         when(userService.getUserById(2L)).thenReturn(recipient);
@@ -105,7 +79,7 @@ class MessageServiceTest {
         Message savedMessage = buildMessage(77L, sender, recipient, "Hello!");
         when(messageRepository.save(any(Message.class))).thenReturn(savedMessage);
 
-        MessageResponse response = messageService.sendMessage(1L, request);
+        MessageResponse response = messageService.sendMessage(1L, 2L, createRequest("Hello!"));
 
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(77L);
@@ -119,9 +93,7 @@ class MessageServiceTest {
 
     @Test
     void sendMessage_toSelf_throws() {
-        MessageRequest request = createRequest(1L, "Talking to myself");
-
-        assertThatThrownBy(() -> messageService.sendMessage(1L, request))
+        assertThatThrownBy(() -> messageService.sendMessage(1L, 1L, createRequest("Talking to myself")))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("yourself");
 
@@ -132,12 +104,11 @@ class MessageServiceTest {
     void sendMessage_toBannedUser_throws() {
         User sender = createUser(1L, Role.ROLE_USER);
         User bannedRecipient = createBannedUser(3L);
-        MessageRequest request = createRequest(3L, "Hi there");
 
         when(userService.getUserById(1L)).thenReturn(sender);
         when(userService.getUserById(3L)).thenReturn(bannedRecipient);
 
-        assertThatThrownBy(() -> messageService.sendMessage(1L, request))
+        assertThatThrownBy(() -> messageService.sendMessage(1L, 3L, createRequest("Hi there")))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("banned");
 
@@ -148,7 +119,6 @@ class MessageServiceTest {
     void sendMessage_storesCorrectFields() {
         User sender = createUser(10L, Role.ROLE_USER);
         User recipient = createUser(20L, Role.ROLE_USER);
-        MessageRequest request = createRequest(20L, "Test message content");
 
         when(userService.getUserById(10L)).thenReturn(sender);
         when(userService.getUserById(20L)).thenReturn(recipient);
@@ -156,15 +126,11 @@ class MessageServiceTest {
         Message savedMessage = buildMessage(1L, sender, recipient, "Test message content");
         when(messageRepository.save(any(Message.class))).thenReturn(savedMessage);
 
-        MessageResponse response = messageService.sendMessage(10L, request);
+        MessageResponse response = messageService.sendMessage(10L, 20L, createRequest("Test message content"));
 
         assertThat(response.getSenderName()).isEqualTo("First10 Last10");
         assertThat(response.getText()).isEqualTo("Test message content");
     }
-
-    // -------------------------------------------------------------------------
-    // getDialog
-    // -------------------------------------------------------------------------
 
     @Test
     void getDialog_marksMessagesAsRead() {
@@ -177,12 +143,10 @@ class MessageServiceTest {
                 buildMessage(3L, u2, u1, "How are you?")
         );
         Page<Message> page = new PageImpl<>(messages, PageRequest.of(0, 20), 3);
-
         when(messageRepository.findDialog(eq(1L), eq(2L), any())).thenReturn(page);
 
         Page<MessageResponse> result = messageService.getDialog(1L, 2L, 0, 20);
 
-        // markAsRead must have been called before returning messages
         verify(messageRepository).markAsRead(1L, 2L);
         assertThat(result.getTotalElements()).isEqualTo(3);
         assertThat(result.getContent()).hasSize(3);
@@ -193,7 +157,6 @@ class MessageServiceTest {
         User u1 = createUser(1L, Role.ROLE_USER);
         User u2 = createUser(2L, Role.ROLE_USER);
 
-        // Messages sent by u1 to u2 and u2 to u1 should all be included
         List<Message> messages = List.of(
                 buildMessage(1L, u1, u2, "Hello"),
                 buildMessage(2L, u2, u1, "World")

@@ -29,6 +29,10 @@ ext {
 }
 
 dependencies {
+    // OpenSearch
+    implementation 'org.opensearch.client:opensearch-java:2.15.0'
+    implementation 'org.apache.httpcomponents.client5:httpclient5'
+
     // Spring Boot Starters
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'

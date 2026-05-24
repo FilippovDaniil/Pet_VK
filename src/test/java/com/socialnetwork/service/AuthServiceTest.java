@@ -7,6 +7,7 @@ import com.socialnetwork.entity.Role;
 import com.socialnetwork.entity.User;
 import com.socialnetwork.exception.BadRequestException;
 import com.socialnetwork.repository.UserRepository;
+import com.socialnetwork.search.UserSearchService;
 import com.socialnetwork.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,8 @@ class AuthServiceTest {
     @Mock RefreshTokenService refreshTokenService;
     /** Mock сервиса чёрного списка JWT — изолирует Redis-зависимость. */
     @Mock BlacklistService blacklistService;
+    /** Mock поискового сервиса — изолирует зависимость от OpenSearch. */
+    @Mock UserSearchService userSearchService;
 
     /**
      * Тестируемый объект. @InjectMocks создаёт экземпляр AuthService

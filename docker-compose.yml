@@ -60,6 +60,26 @@ services:
     ports:
       - "9092:9092"
 
+  # ── OpenSearch ──────────────────────────────────────────────────────────────
+  opensearch:
+    image: opensearchproject/opensearch:2.17.0
+    container_name: sn-opensearch
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - bootstrap.memory_lock=false
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
   # ── Spring Boot App ─────────────────────────────────────────────────────────
   app:
     image: pet_vk-app:latest
@@ -75,6 +95,9 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       JWT_SECRET: mySecretKeyWhichShouldBeAtLeast32CharsLong!!
+      OPENSEARCH_HOST: opensearch
+      OPENSEARCH_PORT: "9200"
+      OPENSEARCH_SCHEME: http
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,6 +105,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started
+      opensearch:
+        condition: service_healthy
     volumes:
       - uploads_data:/app/uploads/avatars
     restart: on-failure
@@ -89,3 +114,4 @@ services:
 volumes:
   postgres_data:
   uploads_data:
+  opensearch_data:

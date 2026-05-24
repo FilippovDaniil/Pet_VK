@@ -9,6 +9,7 @@ import com.socialnetwork.entity.User;
 import com.socialnetwork.exception.BadRequestException;
 import com.socialnetwork.exception.ResourceNotFoundException;
 import com.socialnetwork.repository.UserRepository;
+import com.socialnetwork.search.UserSearchService;
 import com.socialnetwork.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +57,9 @@ public class AuthService {
     // Сервис чёрного списка: кладёт отозванные access-токены в Redis
     private final BlacklistService blacklistService;
 
+    // Сервис поиска: индексирует нового пользователя в OpenSearch после регистрации
+    private final UserSearchService userSearchService;
+
     /**
      * Регистрирует нового пользователя и сразу возвращает пару токенов.
      *
@@ -85,13 +89,9 @@ public class AuthService {
                 .role(Role.ROLE_USER)
                 .build();
 
-        // Сохраняем в БД; возвращаемый объект содержит сгенерированный id
         user = userRepository.save(user);
-
-        // Пишем в лог для аудита (без пароля и персональных данных, только email)
+        userSearchService.indexUser(user);
         log.info("Registered new user: {}", user.getEmail());
-
-        // Выдаём токены сразу после регистрации — пользователь сразу залогинен
         return buildAuthResponse(user);
     }
 

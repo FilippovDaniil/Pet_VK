@@ -18,11 +18,12 @@
 8. [Схема базы данных](#8-схема-базы-данных)
 9. [Apache Kafka — события дружбы](#9-apache-kafka--события-дружбы)
 10. [Кэширование Redis](#10-кэширование-redis)
-11. [Фронтенд SPA](#11-фронтенд-spa)
-12. [Swagger UI](#12-swagger-ui)
-13. [Тестирование](#13-тестирование)
-14. [Postman-коллекция](#14-postman-коллекция)
-15. [Возможные улучшения](#15-возможные-улучшения)
+11. [Поиск OpenSearch](#11-поиск-opensearch)
+12. [Фронтенд SPA](#12-фронтенд-spa)
+13. [Swagger UI](#13-swagger-ui)
+14. [Тестирование](#14-тестирование)
+15. [Postman-коллекция](#15-postman-коллекция)
+16. [Возможные улучшения](#16-возможные-улучшения)
 
 ---
 
@@ -36,11 +37,12 @@
 | Персистентность | Spring Data JPA, Hibernate 6, PostgreSQL 15 |
 | Кэш / хранилище токенов | Spring Data Redis 7 (Lettuce) |
 | Очередь сообщений | Apache Kafka 7.6.1 (Confluent), Zookeeper 7.6.1 |
+| Поиск | OpenSearch 2.15.0 (`opensearch-java:2.15.0`, `httpclient5`) |
 | Миграции БД | Liquibase |
 | Документация API | SpringDoc OpenAPI 2.3.0 (Swagger UI) |
 | Утилиты | Lombok |
 | Сборка | Gradle (Groovy DSL) |
-| Контейнеризация | Docker, Docker Compose 3.8 |
+| Контейнеризация | Docker, Docker Compose 3.8, Kubernetes (k3s / Rancher Desktop) |
 | Тесты | JUnit 5, Spring Boot Test, Spring Security Test, Testcontainers 1.19.7, H2 |
 | JDK образ | eclipse-temurin:21-jdk-alpine |
 
@@ -69,14 +71,14 @@
 │                           │                     │              │
 │        ┌──────────────────┼─────────┐           │              │
 │        ▼                  ▼         ▼           ▼              │
-│   ┌─────────┐       ┌─────────┐  ┌────────────────────────┐   │
-│   │  Redis  │       │  Kafka  │  │      PostgreSQL         │   │
-│   │ :6379   │       │  :9092  │  │      :5433 (Docker)     │   │
-│   │─────────│       │─────────│  │   social_network DB     │   │
-│   │blacklist│       │ friend- │  └────────────────────────┘   │
-│   │ JWT     │       │ events  │                                │
-│   │ refresh │       │  topic  │                                │
-│   │ tokens  │       └─────────┘                                │
+│   ┌─────────┐       ┌─────────┐  ┌──────────┐  ┌───────────┐  │
+│   │  Redis  │       │  Kafka  │  │PostgreSQL│  │OpenSearch │  │
+│   │ :6379   │       │  :9092  │  │:5433     │  │  :9200    │  │
+│   │─────────│       │─────────│  │social_   │  │───────────│  │
+│   │blacklist│       │ friend- │  │network DB│  │users index│  │
+│   │ JWT     │       │ events  │  └──────────┘  │full-text  │  │
+│   │ refresh │       │  topic  │                │  search   │  │
+│   │ tokens  │       └─────────┘                └───────────┘  │
 │   │ @Cache  │                                                   │
 │   └─────────┘                                                   │
 └─────────────────────────────────────────────────────────────────┘
@@ -91,6 +93,7 @@
 | Redis | 6379 | **6379** |
 | Apache Kafka | 9092 | **9092** |
 | Zookeeper | 2181 | **2181** |
+| OpenSearch | 9200 | **9200** |
 
 ---
 
@@ -107,6 +110,7 @@ Pet_VK/
 │   │   │   │   ├── SecurityConfig.java            # Spring Security + JWT + OAuth2
 │   │   │   │   ├── RedisConfig.java               # RedisTemplate, CacheManager
 │   │   │   │   ├── KafkaConfig.java               # продюсер / консьюмер
+│   │   │   │   ├── OpenSearchConfig.java          # OpenSearchClient (httpclient5)
 │   │   │   │   ├── WebMvcConfig.java              # CORS, статика
 │   │   │   │   └── OpenApiConfig.java             # Swagger / OpenAPI метаданные
 │   │   │   │
@@ -185,6 +189,10 @@ Pet_VK/
 │   │   │   │   ├── FriendEventPublisher.java      # KafkaTemplate producer
 │   │   │   │   └── FriendEventListener.java       # @KafkaListener consumer
 │   │   │   │
+│   │   │   ├── search/                            # OpenSearch интеграция
+│   │   │   │   ├── UserDocument.java              # DTO документа в индексе
+│   │   │   │   └── UserSearchService.java         # индексация и full-text поиск
+│   │   │   │
 │   │   │   └── exception/                         # обработка ошибок
 │   │   │       ├── GlobalExceptionHandler.java    # @RestControllerAdvice
 │   │   │       ├── ResourceNotFoundException.java # 404
@@ -216,6 +224,16 @@ Pet_VK/
 ├── postman/
 │   ├── SocialNetwork.postman_collection.json
 │   └── SocialNetwork.postman_environment.json
+├── rancher/
+│   ├── build-and-load.ps1                         # сборка образа + загрузка в k3s VM
+│   └── k8s/                                       # Kubernetes-манифесты
+│       ├── 00-namespace.yaml                      # namespace: pet-vk
+│       ├── 01-secrets.yaml                        # DB / JWT секреты
+│       ├── 02-postgres.yaml                       # PostgreSQL StatefulSet
+│       ├── 03-redis.yaml                          # Redis Deployment
+│       ├── 04-kafka.yaml                          # Kafka + Zookeeper
+│       ├── 05-opensearch.yaml                     # OpenSearch Deployment
+│       └── 06-app.yaml                            # приложение + ConfigMap + NodePort
 ├── Dockerfile
 ├── docker-compose.yml
 ├── build.gradle
@@ -275,7 +293,55 @@ docker compose logs -f app
 
 ---
 
-### Способ 2: Локальный запуск без Docker
+### Способ 2: Kubernetes / Rancher Desktop
+
+Полный production-like деплой на локальный k3s-кластер. Требуется **Rancher Desktop** с включённым Kubernetes.
+
+```powershell
+# 1. Клонировать репозиторий
+git clone https://github.com/your-username/Pet_VK.git
+cd Pet_VK
+
+# 2. Собрать Docker-образ и загрузить его в k3s VM
+.\rancher\build-and-load.ps1
+
+# 3. Задеплоить весь стек (первый раз — все манифесты)
+kubectl apply -f rancher/k8s/
+
+# 4. Проверить состояние подов
+kubectl get pods -n pet-vk
+```
+
+После успешного старта всех подов (`Running`):
+
+| URL | Описание |
+|---|---|
+| `http://localhost:30777` | REST API (NodePort) |
+| `http://localhost:30777/swagger-ui.html` | Swagger UI |
+| `http://localhost:30777/index.html` | Фронтенд SPA |
+
+Обновить приложение после изменений в коде:
+```powershell
+.\rancher\build-and-load.ps1 -Restart
+```
+
+Полезные команды для диагностики:
+```powershell
+# Статус всего стека
+kubectl get all -n pet-vk
+
+# Логи приложения в реальном времени
+kubectl logs -n pet-vk deployment/pet-vk-app -f
+
+# Подробности о поде (события, ошибки)
+kubectl describe pod -n pet-vk <pod-name>
+```
+
+> **Примечание**: Манифесты используют `imagePullPolicy: Never` для образа приложения — он загружается напрямую в k3s VM через `rdctl shell docker load`. Все зависимости (PostgreSQL, Redis, Kafka, OpenSearch) поднимаются как отдельные поды с initContainer-ами для ожидания готовности.
+
+---
+
+### Способ 3: Локальный запуск без Docker
 
 Требуется: JDK 21, PostgreSQL 15, Redis 7, Kafka (или только PostgreSQL + Redis — Kafka не обязателен для базового запуска, события не публикуются).
 
@@ -328,6 +394,9 @@ Liquibase автоматически применит все миграции п
 | `SPRING_DATA_REDIS_HOST` | Хост Redis | `localhost` |
 | `SPRING_DATA_REDIS_PORT` | Порт Redis | `6379` |
 | `SPRING_KAFKA_BOOTSTRAP_SERVERS` | Bootstrap-серверы Kafka | `localhost:9092` |
+| `OPENSEARCH_HOST` | Хост OpenSearch | `localhost` |
+| `OPENSEARCH_PORT` | Порт OpenSearch | `9200` |
+| `OPENSEARCH_SCHEME` | Схема подключения | `http` |
 
 > **Важно**: в production обязательно замените `JWT_SECRET` на случайно сгенерированный секрет длиной не менее 32 символов. Никогда не коммитьте настоящие секреты в репозиторий.
 
@@ -706,16 +775,17 @@ curl "http://localhost:8080/api/messages/5?page=0&size=20" \
 
 ---
 
-### Комментарии (`/api/comments`)
+### Комментарии
+
+Комментарии — вложенный ресурс поста (`/api/posts/{postId}/comments`). Удаление — через отдельный эндпоинт (`/api/comments/{commentId}`).
 
 #### Добавить комментарий к посту
 
 ```bash
-curl -X POST http://localhost:8080/api/comments \
+curl -X POST http://localhost:8080/api/posts/42/comments \
   -H "Authorization: Bearer <accessToken>" \
   -H "Content-Type: application/json" \
   -d '{
-    "postId": 42,
     "text": "Отличный пост!"
   }'
 ```
@@ -725,7 +795,7 @@ curl -X POST http://localhost:8080/api/comments \
 #### Комментарии к посту (с пагинацией)
 
 ```bash
-curl "http://localhost:8080/api/comments/42?page=0&size=10" \
+curl "http://localhost:8080/api/posts/42/comments?page=0&size=20" \
   -H "Authorization: Bearer <accessToken>"
 ```
 
@@ -767,13 +837,24 @@ curl http://localhost:8080/api/groups/3 \
 
 #### Вступить / покинуть группу
 
+Членство — отдельный sub-ресурс (`/api/groups/{groupId}/members`): POST вступает, DELETE покидает.
+
 ```bash
 # Вступить
-curl -X POST http://localhost:8080/api/groups/3/join \
+curl -X POST http://localhost:8080/api/groups/3/members \
   -H "Authorization: Bearer <accessToken>"
 
 # Покинуть
-curl -X POST http://localhost:8080/api/groups/3/leave \
+curl -X DELETE http://localhost:8080/api/groups/3/members \
+  -H "Authorization: Bearer <accessToken>"
+```
+
+---
+
+#### Мои группы
+
+```bash
+curl http://localhost:8080/api/groups/my \
   -H "Authorization: Bearer <accessToken>"
 ```
 
@@ -879,13 +960,14 @@ curl -X DELETE http://localhost:8080/api/admin/comments/55 \
 | DELETE | `/api/friends/{friendId}` | Удалить из друзей | User |
 | POST | `/api/messages` | Отправить сообщение | User |
 | GET | `/api/messages/{userId}` | Диалог | User |
-| POST | `/api/comments` | Добавить комментарий | User |
-| GET | `/api/comments/{postId}` | Комментарии поста | User |
+| POST | `/api/posts/{postId}/comments` | Добавить комментарий | User |
+| GET | `/api/posts/{postId}/comments` | Комментарии поста | User |
 | DELETE | `/api/comments/{commentId}` | Удалить комментарий | User |
 | POST | `/api/groups` | Создать группу | User |
 | GET | `/api/groups/{groupId}` | Информация о группе | User |
-| POST | `/api/groups/{groupId}/join` | Вступить в группу | User |
-| POST | `/api/groups/{groupId}/leave` | Покинуть группу | User |
+| GET | `/api/groups/my` | Мои группы | User |
+| POST | `/api/groups/{groupId}/members` | Вступить в группу | User |
+| DELETE | `/api/groups/{groupId}/members` | Покинуть группу | User |
 | POST | `/api/groups/{groupId}/admins/{userId}` | Назначить админа | Group Owner |
 | DELETE | `/api/groups/{groupId}` | Удалить группу | Group Owner |
 | POST | `/api/groups/{groupId}/posts` | Пост в группу | User |
@@ -1114,7 +1196,61 @@ TTL:    30 дней
 
 ---
 
-## 11. Фронтенд SPA
+## 11. Поиск OpenSearch
+
+OpenSearch используется для полнотекстового поиска пользователей по имени, фамилии и email.
+
+### Конфигурация
+
+Клиент создаётся в `OpenSearchConfig.java` через `ApacheHttpClient5TransportBuilder` (транспорт httpclient5, не httpclient4):
+
+```yaml
+opensearch:
+  host: ${OPENSEARCH_HOST:localhost}
+  port: ${OPENSEARCH_PORT:9200}
+  scheme: ${OPENSEARCH_SCHEME:http}
+```
+
+### Индекс `users`
+
+Документ индекса (`UserDocument`):
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `id` | String | ID пользователя (совпадает с `_id` в OpenSearch) |
+| `firstName` | String | Имя |
+| `lastName` | String | Фамилия |
+| `email` | String | Email |
+| `avatarUrl` | String | Ссылка на аватар |
+| `banned` | boolean | Флаг блокировки |
+
+Индекс создаётся автоматически при старте приложения (`@PostConstruct` в `UserSearchService`). Если OpenSearch недоступен — приложение продолжает работу (graceful degradation, поиск возвращает пустой список).
+
+### Операции
+
+`UserSearchService` предоставляет три операции:
+
+| Метод | Описание |
+|---|---|
+| `indexUser(User)` | Добавить/обновить пользователя в индексе |
+| `removeUser(Long)` | Удалить пользователя из индекса |
+| `search(String query, int page, int size)` | Full-text поиск с пагинацией |
+
+Поиск использует `multi_match` запрос по полям `firstName`, `lastName`, `email` с `fuzziness: AUTO` (поддержка опечаток). При пустом запросе возвращает всех пользователей (`match_all`).
+
+### Использование через API
+
+```bash
+# Поиск пользователей (делегирует в UserSearchService)
+curl "http://localhost:8080/api/users/search?query=Иван&page=0&size=20" \
+  -H "Authorization: Bearer <accessToken>"
+```
+
+Ответ — `Page<UserResponse>` со стандартными метаданными пагинации Spring Data.
+
+---
+
+## 12. Фронтенд SPA
 
 Проект включает минималистичный SPA на ванильном JavaScript (`frontend/index.html`).
 
@@ -1140,7 +1276,7 @@ TTL:    30 дней
 
 ---
 
-## 12. Swagger UI
+## 13. Swagger UI
 
 Интерактивная документация API доступна по адресу:
 
@@ -1163,7 +1299,7 @@ Swagger предоставляется библиотекой `springdoc-openapi
 
 ---
 
-## 13. Тестирование
+## 14. Тестирование
 
 ### Структура тестов
 
@@ -1221,7 +1357,7 @@ src/test/java/com/socialnetwork/
 
 ---
 
-## 14. Postman-коллекция
+## 15. Postman-коллекция
 
 В директории `postman/` находятся готовые файлы для импорта в Postman:
 
@@ -1249,7 +1385,7 @@ postman/
 
 ---
 
-## 15. Возможные улучшения
+## 16. Возможные улучшения
 
 Список функциональности, которую можно добавить для развития проекта:
 
@@ -1260,7 +1396,7 @@ postman/
 - **Уведомления** — система уведомлений (Kafka-события → push или SSE)
 - **Фото в постах** — загрузка изображений к постам (сейчас только `image_url`)
 - **Истории** — временный контент (Stories) с автоудалением через 24 часа
-- **Поиск по постам** — полнотекстовый поиск (PostgreSQL FTS или Elasticsearch)
+- **Поиск по постам/сообщениям** — расширить индекс OpenSearch за рамки пользователей (посты, сообщения)
 - **Пагинация курсором** — keyset pagination вместо offset для больших объёмов данных
 
 ### Инфраструктура
@@ -1268,8 +1404,8 @@ postman/
 - **Многоэтапная сборка Docker (multi-stage build)** — уменьшение размера итогового образа
 - **Nginx** — reverse proxy + раздача статики фронтенда
 - **Spring Boot Actuator + Prometheus + Grafana** — мониторинг и метрики
-- **ELK Stack** — централизованное логирование (Elasticsearch + Logstash + Kibana)
-- **Kubernetes Helm chart** — деплой в k8s-кластер
+- **Loki** — централизованное логирование (Grafana Loki вместо ELK)
+- **Kubernetes Helm chart** — упаковать существующие k8s-манифесты в Helm для версионирования
 - **CI/CD** — GitHub Actions: сборка, тесты, публикация Docker-образа в registry
 
 ### Безопасность

@@ -47,4 +47,10 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, GroupM
      * Аннотация {@code @Modifying} не нужна — Spring Data автоматически оборачивает в транзакцию.
      */
     void deleteByGroupIdAndUserId(Long groupId, Long userId);
+
+    /**
+     * Возвращает все группы, в которых состоит пользователь.
+     * Используется для эндпоинта GET /api/groups/my.
+     */
+    java.util.List<GroupMember> findByUserId(Long userId);
 }

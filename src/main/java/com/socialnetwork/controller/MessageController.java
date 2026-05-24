@@ -42,32 +42,24 @@ public class MessageController {
     private final UserService userService;
 
     /**
-     * Отправка личного сообщения другому пользователю.
+     * Отправка личного сообщения пользователю.
      *
-     * <p>Создаёт новое сообщение от текущего пользователя указанному получателю.
-     * Сообщение сохраняется в базе данных со статусом "непрочитано".
+     * <p>Получатель задаётся в пути URL: {@code POST /api/messages/{recipientId}}.
+     * Тело запроса содержит только текст сообщения (поле {@code content}).
      *
      * @param userDetails данные текущего пользователя (отправитель)
-     * @param request     тело запроса: ID получателя и текст сообщения (до 10 000 символов)
+     * @param recipientId ID получателя из пути URL
+     * @param request     тело запроса: текст сообщения (до 10 000 символов)
      * @return {@link MessageResponse} с данными сохранённого сообщения
-     *
-     * <p>Аннотации:
-     * <ul>
-     *   <li>{@code @PostMapping} без пути — HTTP POST /api/messages.</li>
-     *   <li>{@code @ResponseStatus(HttpStatus.CREATED)} — возвращает статус 201 Created.</li>
-     *   <li>{@code @Valid} — запускает валидацию полей запроса (@NotNull, @NotBlank, @Size).</li>
-     *   <li>{@code @RequestBody} — десериализует JSON из тела запроса в {@link MessageRequest}.</li>
-     * </ul>
      */
-    @PostMapping
+    @PostMapping("/{recipientId}")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Send a message")
+    @Operation(summary = "Send a message to user")
     public MessageResponse sendMessage(@AuthenticationPrincipal UserDetails userDetails,
+                                       @PathVariable Long recipientId,
                                        @Valid @RequestBody MessageRequest request) {
-        // Получаем числовой ID отправителя по его email из Security Context
         Long senderId = userService.getUserByEmail(userDetails.getUsername()).getId();
-        // Создаём сообщение через сервис и возвращаем DTO
-        return messageService.sendMessage(senderId, request);
+        return messageService.sendMessage(senderId, recipientId, request);
     }
 
     /**

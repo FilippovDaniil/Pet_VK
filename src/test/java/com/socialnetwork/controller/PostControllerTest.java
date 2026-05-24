@@ -59,8 +59,11 @@ class PostControllerTest {
     @MockBean PostService postService;
     @MockBean UserService userService;
 
-    // SecurityConfig требует этих бинов в контексте — без mock'ов контекст не запустится
-    @MockBean com.socialnetwork.security.JwtAuthenticationFilter jwtAuthenticationFilter;
+    // SecurityConfig требует этих бинов; JwtTokenProvider мокируем вместо самого фильтра,
+    // чтобы реальный JwtAuthenticationFilter вызвал chain.doFilter() (нет токена → пропускает).
+    // ClientRegistrationRepository нужен для oauth2Login() в SecurityConfig.
+    @MockBean com.socialnetwork.security.JwtTokenProvider jwtTokenProvider;
+    @MockBean org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
     @MockBean com.socialnetwork.security.OAuth2SuccessHandler oAuth2SuccessHandler;
     @MockBean com.socialnetwork.security.CustomUserDetailsService customUserDetailsService;
     @MockBean com.socialnetwork.service.BlacklistService blacklistService;

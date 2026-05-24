@@ -53,21 +53,17 @@ public class CommentService {
      * @throws ResourceNotFoundException если пост не найден
      */
     @Transactional // Обёртка в транзакцию: сохранение комментария атомарно
-    public CommentResponse addComment(Long userId, CommentCreateRequest request) {
-        // Загружаем автора — UserService кэширует пользователей, повторный вызов дёшев
+    public CommentResponse addComment(Long userId, Long postId, CommentCreateRequest request) {
         User author = userService.getUserById(userId);
 
-        // Заблокированный пользователь не может оставлять комментарии
         if (author.isBanned()) throw new ForbiddenException("Banned users cannot comment");
 
-        // Загружаем пост — проверяем его существование перед созданием комментария
-        Post post = postService.getPostById(request.getPostId());
+        Post post = postService.getPostById(postId);
 
-        // Строим сущность комментария через Builder-паттерн Lombok
         Comment comment = Comment.builder()
-                .author(author)         // автор комментария
-                .post(post)             // пост, к которому относится комментарий
-                .text(request.getText()) // текст комментария
+                .author(author)
+                .post(post)
+                .text(request.getText())
                 .build();
 
         // Сохраняем в БД и сразу возвращаем DTO

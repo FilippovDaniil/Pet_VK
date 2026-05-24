@@ -32,17 +32,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Интеграционные тесты HTTP-слоя для {@link CommentController}.
  *
- * <p>Проверяет маппинг эндпоинтов, Bean Validation на входных DTO
- * и корректность HTTP-статусов для авторизованных и неавторизованных запросов.
- *
- * <p>Тест {@code deleteComment_delegatesCorrectUserIdFromPrincipal} проверяет
- * ключевой инвариант безопасности: userId берётся из Principal (токена),
- * а не из параметра запроса. Это предотвращает удаление чужих комментариев
- * через подмену userId в запросе.
- *
  * <p>Покрываемые сценарии:
  * <ul>
- *   <li>addComment: 201; не авторизован → 401; null postId → 400; пустой текст → 400</li>
+ *   <li>addComment: 201; не авторизован → 401; пустой текст → 400</li>
  *   <li>getComments: 200 со списком; дефолтный size=20; пустой результат → 200</li>
  *   <li>deleteComment: 204; не авторизован → 401; userId из Principal</li>
  * </ul>
@@ -57,8 +49,8 @@ class CommentControllerTest {
     @MockBean CommentService commentService;
     @MockBean UserService userService;
 
-    // SecurityConfig требует этих бинов в контексте — без mock'ов контекст не запустится
-    @MockBean com.socialnetwork.security.JwtAuthenticationFilter jwtAuthenticationFilter;
+    @MockBean com.socialnetwork.security.JwtTokenProvider jwtTokenProvider;
+    @MockBean org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
     @MockBean com.socialnetwork.security.OAuth2SuccessHandler oAuth2SuccessHandler;
     @MockBean com.socialnetwork.security.CustomUserDetailsService customUserDetailsService;
     @MockBean com.socialnetwork.service.BlacklistService blacklistService;
@@ -88,21 +80,20 @@ class CommentControllerTest {
     }
 
     // -------------------------------------------------------------------------
-    // POST /api/comments
+    // POST /api/posts/{postId}/comments
     // -------------------------------------------------------------------------
 
     @Test
     @WithMockUser(username = "test@test.com", roles = {"USER"})
     void addComment_returns201() throws Exception {
         CommentCreateRequest request = new CommentCreateRequest();
-        request.setPostId(10L);
         request.setText("Nice post!");
 
         when(userService.getUserByEmail("test@test.com")).thenReturn(testUser);
-        when(commentService.addComment(eq(1L), any(CommentCreateRequest.class)))
+        when(commentService.addComment(eq(1L), eq(10L), any(CommentCreateRequest.class)))
                 .thenReturn(sampleCommentResponse);
 
-        mockMvc.perform(post("/api/comments")
+        mockMvc.perform(post("/api/posts/10/comments")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -112,16 +103,15 @@ class CommentControllerTest {
                 .andExpect(jsonPath("$.authorId").value(1))
                 .andExpect(jsonPath("$.text").value("Nice post!"));
 
-        verify(commentService).addComment(eq(1L), any(CommentCreateRequest.class));
+        verify(commentService).addComment(eq(1L), eq(10L), any(CommentCreateRequest.class));
     }
 
     @Test
     void addComment_unauthenticated_returns401() throws Exception {
         CommentCreateRequest request = new CommentCreateRequest();
-        request.setPostId(10L);
         request.setText("Nice post!");
 
-        mockMvc.perform(post("/api/comments")
+        mockMvc.perform(post("/api/posts/10/comments")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -132,28 +122,11 @@ class CommentControllerTest {
 
     @Test
     @WithMockUser(username = "test@test.com", roles = {"USER"})
-    void addComment_missingPostId_returns400() throws Exception {
-        CommentCreateRequest request = new CommentCreateRequest();
-        // postId is null — @NotNull should reject
-        request.setText("Nice post!");
-
-        mockMvc.perform(post("/api/comments")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-
-        verifyNoInteractions(commentService);
-    }
-
-    @Test
-    @WithMockUser(username = "test@test.com", roles = {"USER"})
     void addComment_blankText_returns400() throws Exception {
         CommentCreateRequest request = new CommentCreateRequest();
-        request.setPostId(10L);
-        request.setText(""); // blank — @NotBlank should reject
+        request.setText("");
 
-        mockMvc.perform(post("/api/comments")
+        mockMvc.perform(post("/api/posts/10/comments")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -163,7 +136,7 @@ class CommentControllerTest {
     }
 
     // -------------------------------------------------------------------------
-    // GET /api/comments/{postId}
+    // GET /api/posts/{postId}/comments
     // -------------------------------------------------------------------------
 
     @Test
@@ -181,7 +154,7 @@ class CommentControllerTest {
 
         when(commentService.getComments(eq(10L), eq(0), eq(20))).thenReturn(page);
 
-        mockMvc.perform(get("/api/comments/10")
+        mockMvc.perform(get("/api/posts/10/comments")
                         .param("page", "0")
                         .param("size", "20"))
                 .andExpect(status().isOk())
@@ -201,11 +174,10 @@ class CommentControllerTest {
         Page<CommentResponse> emptyPage = new PageImpl<>(List.of());
         when(commentService.getComments(eq(10L), eq(0), eq(20))).thenReturn(emptyPage);
 
-        mockMvc.perform(get("/api/comments/10"))
+        mockMvc.perform(get("/api/posts/10/comments"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
 
-        // Verify that default size=20 is applied (matching the controller's defaultValue)
         verify(commentService).getComments(10L, 0, 20);
     }
 
@@ -215,7 +187,7 @@ class CommentControllerTest {
         Page<CommentResponse> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
         when(commentService.getComments(eq(99L), anyInt(), anyInt())).thenReturn(emptyPage);
 
-        mockMvc.perform(get("/api/comments/99"))
+        mockMvc.perform(get("/api/posts/99/comments"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isEmpty())
                 .andExpect(jsonPath("$.totalElements").value(0));
@@ -250,8 +222,6 @@ class CommentControllerTest {
     @Test
     @WithMockUser(username = "test@test.com", roles = {"USER"})
     void deleteComment_delegatesCorrectUserIdFromPrincipal() throws Exception {
-        // Verify that the controller resolves userId from the authenticated principal,
-        // not from a request parameter — this is the core security invariant.
         User anotherUser = User.builder()
                 .id(99L).email("test@test.com")
                 .firstName("Test").lastName("User")

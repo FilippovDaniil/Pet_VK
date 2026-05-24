@@ -6,12 +6,15 @@ import com.socialnetwork.entity.User;
 import com.socialnetwork.exception.BadRequestException;
 import com.socialnetwork.exception.ResourceNotFoundException;
 import com.socialnetwork.repository.UserRepository;
+import com.socialnetwork.search.UserDocument;
+import com.socialnetwork.search.UserSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +25,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -51,6 +55,9 @@ public class UserService {
 
     // Репозиторий JPA для всех операций с таблицей пользователей
     private final UserRepository userRepository;
+
+    // Сервис полнотекстового поиска через OpenSearch (graceful degradation: не ломает при недоступности)
+    private final UserSearchService userSearchService;
 
     /**
      * Возвращает пользователя по id с кэшированием результата.
@@ -119,8 +126,9 @@ public class UserService {
         // поэтому проверяем только на null, а не на hasText
         if (request.getBio() != null) user.setBio(request.getBio());
 
-        // Сохраняем изменения в БД и сразу возвращаем DTO без повторного запроса
-        return UserResponse.from(userRepository.save(user));
+        User saved = userRepository.save(user);
+        userSearchService.indexUser(saved);
+        return UserResponse.from(saved);
     }
 
     /**
@@ -168,8 +176,9 @@ public class UserService {
         // Этот путь должен быть настроен в StaticResourceConfig как раздача статики
         user.setAvatarUrl("/uploads/avatars/" + filename);
 
-        // Сохраняем обновлённый URL в БД
-        return UserResponse.from(userRepository.save(user));
+        User saved = userRepository.save(user);
+        userSearchService.indexUser(saved);
+        return UserResponse.from(saved);
     }
 
     /**
@@ -185,9 +194,16 @@ public class UserService {
      * @return страница с DTO пользователей, удовлетворяющих запросу
      */
     public Page<UserResponse> searchUsers(String query, int page, int size) {
-        // PageRequest.of() создаёт объект пагинации с номером страницы и размером
+        // Пробуем OpenSearch — полнотекстовый поиск с нечёткостью (fuzziness)
+        List<UserDocument> docs = userSearchService.search(query, page, size);
+        if (!docs.isEmpty()) {
+            List<UserResponse> results = docs.stream()
+                    .map(UserResponse::fromDocument)
+                    .toList();
+            return new PageImpl<>(results, PageRequest.of(page, size), results.size());
+        }
+        // Fallback: PostgreSQL LIKE если OpenSearch недоступен или индекс пуст
         return userRepository.searchByQuery(query, PageRequest.of(page, size))
-                // Преобразуем каждую сущность User в UserResponse через статический фабричный метод
                 .map(UserResponse::from);
     }
 

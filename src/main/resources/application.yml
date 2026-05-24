@@ -59,6 +59,11 @@ spring:
     redis:
       time-to-live: 600000
 
+opensearch:
+  host: ${OPENSEARCH_HOST:localhost}
+  port: ${OPENSEARCH_PORT:9200}
+  scheme: ${OPENSEARCH_SCHEME:http}
+
 app:
   jwt:
     secret: ${JWT_SECRET:mySecretKeyWhichShouldBeAtLeast32CharsLong!!}

@@ -25,21 +25,6 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/**
- * Юнит-тесты для {@link CommentService}.
- *
- * <p>Проверяет добавление, получение и удаление комментариев, включая проверки прав доступа.
- * Вспомогательный метод {@code createBannedUser} позволяет тестировать поведение
- * при попытке заблокированного пользователя оставить комментарий.
- *
- * <p>Покрываемые сценарии:
- * <ul>
- *   <li>addComment: успех; заблокированный пользователь → ForbiddenException</li>
- *   <li>getComments: постраничный список; пустой пост → пустая страница</li>
- *   <li>deleteComment: автор удаляет; не-автор → ForbiddenException; не найден → ResourceNotFoundException</li>
- *   <li>deleteCommentByAdmin: успех; не найден → ResourceNotFoundException</li>
- * </ul>
- */
 @ExtendWith(MockitoExtension.class)
 class CommentServiceTest {
 
@@ -48,10 +33,6 @@ class CommentServiceTest {
     @Mock UserService userService;
 
     @InjectMocks CommentService commentService;
-
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
 
     private User createUser(Long id, Role role) {
         return User.builder()
@@ -92,9 +73,8 @@ class CommentServiceTest {
                 .build();
     }
 
-    private CommentCreateRequest createRequest(Long postId, String text) {
+    private CommentCreateRequest createRequest(String text) {
         CommentCreateRequest req = new CommentCreateRequest();
-        req.setPostId(postId);
         req.setText(text);
         return req;
     }
@@ -107,7 +87,6 @@ class CommentServiceTest {
     void addComment_success() {
         User author = createUser(1L, Role.ROLE_USER);
         Post post = createPost(10L, createUser(2L, Role.ROLE_USER));
-        CommentCreateRequest request = createRequest(10L, "Great post!");
 
         when(userService.getUserById(1L)).thenReturn(author);
         when(postService.getPostById(10L)).thenReturn(post);
@@ -115,7 +94,7 @@ class CommentServiceTest {
         Comment savedComment = createComment(99L, author, post);
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
 
-        CommentResponse response = commentService.addComment(1L, request);
+        CommentResponse response = commentService.addComment(1L, 10L, createRequest("Great post!"));
 
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(99L);
@@ -129,11 +108,10 @@ class CommentServiceTest {
     @Test
     void addComment_bannedUser_throws() {
         User bannedUser = createBannedUser(5L);
-        CommentCreateRequest request = createRequest(10L, "Trying to comment");
 
         when(userService.getUserById(5L)).thenReturn(bannedUser);
 
-        assertThatThrownBy(() -> commentService.addComment(5L, request))
+        assertThatThrownBy(() -> commentService.addComment(5L, 10L, createRequest("Trying to comment")))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("Banned");
 
@@ -206,7 +184,6 @@ class CommentServiceTest {
 
         when(commentRepository.findById(50L)).thenReturn(Optional.of(comment));
 
-        // userId 3L is not the author of the comment
         assertThatThrownBy(() -> commentService.deleteComment(50L, 3L))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("Not your comment");
@@ -236,7 +213,6 @@ class CommentServiceTest {
 
         commentService.deleteCommentByAdmin(55L);
 
-        // Admin deletes the comment regardless of ownership
         verify(commentRepository).delete(comment);
     }
 

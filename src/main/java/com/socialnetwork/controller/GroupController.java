@@ -16,6 +16,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * Контроллер управления группами (сообществами).
  *
@@ -88,6 +90,18 @@ public class GroupController {
     }
 
     /**
+     * Получение списка групп текущего пользователя.
+     *
+     * @param userDetails данные текущего пользователя
+     * @return список {@link GroupResponse} с группами, в которых состоит пользователь
+     */
+    @GetMapping("/my")
+    @Operation(summary = "Get groups of current user")
+    public List<GroupResponse> getMyGroups(@AuthenticationPrincipal UserDetails userDetails) {
+        return groupService.getUserGroups(getId(userDetails));
+    }
+
+    /**
      * Вступление в группу.
      *
      * <p>Добавляет текущего пользователя в участники группы с ролью MEMBER.
@@ -95,18 +109,11 @@ public class GroupController {
      *
      * @param userDetails данные текущего пользователя
      * @param groupId     ID группы для вступления
-     *
-     * <p>Аннотации:
-     * <ul>
-     *   <li>{@code @PostMapping("/{groupId}/join")} — HTTP POST /api/groups/{groupId}/join.</li>
-     *   <li>{@code @ResponseStatus(HttpStatus.NO_CONTENT)} — ответ 204 без тела.</li>
-     * </ul>
      */
-    @PostMapping("/{groupId}/join")
+    @PostMapping("/{groupId}/members")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Join a group")
     public void join(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long groupId) {
-        // Добавляем пользователя как участника группы
         groupService.joinGroup(getId(userDetails), groupId);
     }
 
@@ -118,14 +125,11 @@ public class GroupController {
      *
      * @param userDetails данные текущего пользователя
      * @param groupId     ID группы для выхода
-     *
-     * <p>{@code @PostMapping("/{groupId}/leave")} — HTTP POST /api/groups/{groupId}/leave.
      */
-    @PostMapping("/{groupId}/leave")
+    @DeleteMapping("/{groupId}/members")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Leave a group")
     public void leave(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long groupId) {
-        // Удаляем пользователя из участников группы
         groupService.leaveGroup(getId(userDetails), groupId);
     }
 

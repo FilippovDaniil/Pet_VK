@@ -5,6 +5,8 @@ import com.socialnetwork.dto.request.PostCreateRequest;
 import com.socialnetwork.dto.response.GroupResponse;
 import com.socialnetwork.dto.response.PostResponse;
 import com.socialnetwork.entity.*;
+
+import java.util.List;
 import com.socialnetwork.exception.BadRequestException;
 import com.socialnetwork.exception.ForbiddenException;
 import com.socialnetwork.exception.ResourceNotFoundException;
@@ -247,6 +249,19 @@ public class GroupService {
                 .build();
 
         return PostResponse.from(postRepository.save(post));
+    }
+
+    /**
+     * Возвращает список групп, в которых состоит пользователь.
+     *
+     * @param userId id пользователя
+     * @return список DTO групп
+     */
+    @Transactional(readOnly = true)
+    public List<GroupResponse> getUserGroups(Long userId) {
+        return groupMemberRepository.findByUserId(userId).stream()
+                .map(member -> GroupResponse.from(member.getGroup()))
+                .toList();
     }
 
     /**

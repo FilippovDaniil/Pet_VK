@@ -1,6 +1,7 @@
 package com.socialnetwork.dto.response;
 
 import com.socialnetwork.entity.User;
+import com.socialnetwork.search.UserDocument;
 import lombok.Builder;
 import lombok.Data;
 
@@ -63,9 +64,20 @@ public class UserResponse {
                 .lastName(user.getLastName())
                 .avatarUrl(user.getAvatarUrl())
                 .bio(user.getBio())
-                .role(user.getRole().name())  // enum → строка ("ROLE_USER")
+                .role(user.getRole().name())
                 .banned(user.isBanned())
                 .createdAt(user.getCreatedAt())
+                .build();
+    }
+
+    public static UserResponse fromDocument(UserDocument doc) {
+        return UserResponse.builder()
+                .id(Long.parseLong(doc.getId()))
+                .email(doc.getEmail())
+                .firstName(doc.getFirstName())
+                .lastName(doc.getLastName())
+                .avatarUrl(doc.getAvatarUrl())
+                .banned(doc.isBanned())
                 .build();
     }
 }

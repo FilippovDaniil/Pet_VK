@@ -7,6 +7,7 @@ import com.socialnetwork.dto.response.AuthResponse;
 import com.socialnetwork.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
@@ -40,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(controllers = AuthController.class)
 @ActiveProfiles("test")
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
 
     /** MockMvc — инструмент для отправки HTTP-запросов без реального сервера. */
@@ -50,8 +52,11 @@ class AuthControllerTest {
     /** Mock сервиса аутентификации — контроллер делегирует всю логику ему. */
     @MockBean AuthService authService;
 
-    // SecurityConfig требует этих бинов в контексте — без mock'ов контекст не запустится
-    @MockBean com.socialnetwork.security.JwtAuthenticationFilter jwtAuthenticationFilter;
+    // SecurityConfig требует этих бинов; JwtTokenProvider мокируем вместо самого фильтра,
+    // чтобы реальный JwtAuthenticationFilter пропускал запросы без токена.
+    // ClientRegistrationRepository нужен для oauth2Login() в SecurityConfig.
+    @MockBean com.socialnetwork.security.JwtTokenProvider jwtTokenProvider;
+    @MockBean org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
     @MockBean com.socialnetwork.security.OAuth2SuccessHandler oAuth2SuccessHandler;
     @MockBean com.socialnetwork.security.CustomUserDetailsService customUserDetailsService;
     @MockBean com.socialnetwork.service.BlacklistService blacklistService;
