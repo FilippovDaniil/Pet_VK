@@ -34,7 +34,9 @@
       "Bash(python3 *)",
       "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\MaxxPC\\\\IdeaProjects\\\\Pet_VK\\\\frontend\\\\icons\")",
       "Bash(Write-Host \"OK\")",
-      "PowerShell(Copy-Item *)"
+      "PowerShell(Copy-Item *)",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(git *)"
     ]
   }
 }
